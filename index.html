@@ -149,6 +149,21 @@ nav.tabs a.on{color:var(--accent)}
 .nowc .tt{font-weight:650;font-size:15px;line-height:1.25;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .nowc .ts{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sec small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:2px}
+.avatar{overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.colpill{display:inline-flex;align-items:center;gap:6px;margin:10px auto 0;padding:6px 12px;border-radius:99px;background:var(--card);font-size:13px;font-weight:650;color:var(--muted)}
+.colpill svg{width:14px;height:14px}
+.bmrow{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
+.bmrow:last-child{border-bottom:0}
+.bmrow .ic{color:var(--accent);flex:none;margin-top:2px}
+.bmrow .x{flex:1;min-width:0}
+.bmrow .x b{display:block;font-size:13px;font-weight:650;color:var(--muted)}
+.bmrow .x span{display:block;font:15px/1.4 var(--serif);margin-top:2px}
+.bmrow .x em{display:block;font-style:normal;font-size:14px;color:var(--ink);margin-top:4px}
+.bmrow .del{flex:none;color:var(--faint);padding:4px}
+.sheet .row2{display:flex;gap:8px;margin-top:10px}
+.sheet .row2 input{flex:1}
+.sheet input[type=text]{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px;outline:none;color:var(--ink);font:inherit}
 .shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
 .shelf::-webkit-scrollbar{display:none}
 .shelf .tile{width:118px;flex:none;scroll-snap-align:start}
@@ -377,6 +392,7 @@ nav.tabs a.on{color:var(--accent)}
       <button class="tool" id="tSpeed"><span class="v" id="speedV">1×</span>Viteză</button>
       <button class="tool" id="tSleep"><span class="v" id="sleepV"></span><span id="sleepL">Somn</span></button>
       <button class="tool" id="tText"><span class="v" id="textV"></span>Text</button>
+      <button class="tool" id="tMark"><span class="v" id="markV"></span>Semn</button>
       <button class="tool" id="tFav"><span class="v" id="favV"></span>Favorit</button>
     </div>
   </div>
@@ -416,6 +432,9 @@ const P = {
   refresh:'<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  bookmark:'<path d="M6 3h12v18l-6-4.5L6 21z"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
   x:'<path d="M6 6l12 12M18 6 6 18"/>',
   up:'<path d="m6 15 6-6 6 6"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
@@ -475,7 +494,7 @@ async function FirebaseBackend(cfg){
   const me = () => auth.currentUser;
   const val = async p => (await D.get(D.ref(db, p))).val();
   const uref = p => D.ref(db, `ab/users/${me().uid}/${p}`);
-  const wrapUser = u => u && {uid: u.uid, name: u.displayName || (u.email||"").split("@")[0], email: u.email};
+  const wrapUser = u => u && {uid: u.uid, name: u.displayName || (u.email||"").split("@")[0], email: u.email, photo: u.photoURL || ""};
   return {
     mode: "firebase",
     init(cb){ A.onAuthStateChanged(auth, u => cb(wrapUser(u))); },
@@ -507,7 +526,8 @@ async function FirebaseBackend(cfg){
       await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async deny(uid){ await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async revoke(uid){ await D.set(D.ref(db, `ab/allowed/${uid}`), null); },
-    async addBook(url, whole){ const r = D.push(D.ref(db, "ab/inbox")); await D.set(r, {url, whole: !!whole, status: "nou", at: Date.now(), by: me().uid}); },
+    async addBook(url, whole, collection){ const r = D.push(D.ref(db, "ab/inbox")); await D.set(r, {url, whole: !!whole, collection: collection || "", status: "nou", at: Date.now(), by: me().uid}); },
+    async setCollection(id, name){ await D.set(D.ref(db, `ab/books/${id}/collection`), name); },
     async bookRequests(){ return (await val("ab/inbox")) || {}; },
   };
 }
@@ -778,6 +798,7 @@ $("#seek").addEventListener("input", () => { seeking = true; renderProgress(); }
 $("#seek").addEventListener("change", () => { const d = audio.duration || PL.ch?.dur || 0; audio.currentTime = $("#seek").value/1000*d; seeking = false; persist(true); highlight(true); });
 $("#tText").onclick = () => setTextMode(!PL.textOn); $("#textV").innerHTML = icon("text");
 $("#tFav").onclick = () => toggleFav(PL.book);
+$("#markV").innerHTML = icon("bookmark"); $("#tMark").onclick = bookmarkSheet;
 $("#tSpeed").onclick = () => sheet(`<h3>Viteza de redare</h3>` + [0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2].map(r =>
   `<button class="opt ${Math.abs(audio.playbackRate - r) < .01 ? "on" : ""}" data-r="${r}">${fmtSpeed(r)}${r === 1 ? " · normal" : ""}${Math.abs(audio.playbackRate - r) < .01 ? icon("check") : ""}</button>`).join(""),
   el => el.querySelectorAll("[data-r]").forEach(b => b.onclick = () => { const r = +b.dataset.r; audio.playbackRate = r; save("prefs/speed", r); closeSheet(); }));
@@ -819,17 +840,65 @@ function tile(id){
     <div class="tt">${esc(b.title)}</div><div class="ts">${p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
     ${p.started && p.pct < .995 ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div>` : ""}</a>`;
 }
-function appbar(left){
+function avatarInner(){
   const initial = esc(((USER && USER.name) || "?").trim()[0].toUpperCase());
-  return `<header class="appbar">${left || `<a class="brand" href="#/home"><img src="icon-192.png" alt="">Sona</a>`}<a class="avatar" href="#/profile" aria-label="Profil">${initial}</a></header>`;
+  return USER && USER.photo ? `<img src="${esc(USER.photo)}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${initial}'))">` : initial;
+}
+function appbar(left){
+  return `<header class="appbar">${left || `<a class="brand" href="#/home"><img src="icon-192.png" alt="">Sona</a>`}<a class="avatar" href="#/profile" aria-label="Profil">${avatarInner()}</a></header>`;
 }
 const firstName = () => ((USER && USER.name) || "").trim().split(/\s+/)[0];
+function bookmarksOf(bookId){
+  return Object.entries(ST.bm || {}).map(([k, v]) => ({k, ...v})).filter(m => m.book === bookId && (BOOKS[bookId].chapters || {})[m.ch])
+    .sort((x, y) => ((BOOKS[bookId].chapters[x.ch].order||0) - (BOOKS[bookId].chapters[y.ch].order||0)) || x.t - y.t);
+}
+function bookmarkRows(bookId){
+  const chs = chaptersOf(bookId);
+  return bookmarksOf(bookId).map(m => { const c = BOOKS[bookId].chapters[m.ch], n = chs.findIndex(x => x.id === m.ch) + 1;
+    return `<div class="bmrow" data-k="${esc(m.k)}"><span class="ic">${icon("bookmark", true)}</span>
+      <button class="x" data-go="${esc(m.k)}" style="text-align:left"><b>${isDaily(bookId) ? esc(c.title) : `Cap. ${n} · ${esc(c.title)}`} · ${fmtClock(m.t)}</b>
+      ${m.quote ? `<span>„${esc(m.quote)}”</span>` : ""}${m.note ? `<em>${esc(m.note)}</em>` : ""}</button>
+      <button class="del" data-del="${esc(m.k)}" aria-label="Șterge semnul">${icon("trash")}</button></div>`; }).join("");
+}
+function wireBookmarkRows(el, bookId, after){
+  el.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const m = (ST.bm||{})[b.dataset.go]; if(!m) return; closeSheet(); playChapter(bookId, m.ch, {t: m.t, open: true}); });
+  el.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => { await save(`bm/${b.dataset.del}`, null); toast("Semn șters"); after(); });
+}
+function bindBookmarks(bookId){
+  const box = $("#bmList"); if(!box) return;
+  wireBookmarkRows(box, bookId, () => render());
+}
+function bookmarkSheet(){
+  if(!PL.ch) return;
+  const t = audio.currentTime || 0, quote = (PL.spans[PL.curIdx] && PL.spans[PL.curIdx].textContent) || "";
+  const draw = () => {
+    const rows = bookmarkRows(PL.book);
+    $("#sheetBody").innerHTML = `<h3>Semne de carte</h3>
+      <p style="color:var(--muted);font-size:14px;margin:0 0 10px">Pune un semn aici (${fmtClock(t)}) ca să revii exact la acest loc.${quote ? `<br><span style="font-family:var(--serif)">„${esc(quote.slice(0, 120))}”</span>` : ""}</p>
+      <input type="text" id="bmNote" placeholder="Notiță (opțional)" maxlength="140">
+      <button class="btn primary" id="bmAdd" style="width:100%;margin-top:10px">${icon("bookmark", true)} Pune semn aici</button>
+      ${rows ? `<h3 style="margin-top:20px">În această carte</h3><div class="set">${rows}</div>` : ""}`;
+    $("#bmAdd").onclick = async () => {
+      const k = "b" + Date.now().toString(36);
+      await save(`bm/${k}`, {book: PL.book, ch: PL.ch.id, t: Math.round(t * 10) / 10, at: Date.now(), quote: quote.slice(0, 200), note: $("#bmNote").value.trim()});
+      toast("Semn de carte pus"); draw();
+    };
+    wireBookmarkRows($("#sheetBody"), PL.book, draw);
+  };
+  sheet(""); draw();
+}
+
 function chapterRow(c, i){
   const ps = posOf(c.id), done = chapterDone(c), cur = PL.ch && PL.ch.id === c.id;
   const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
   return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("wave") : i+1}</span>
     <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
     ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`;
+}
+const collectionOf = id => (BOOKS[id] && BOOKS[id].collection) || (isDaily(id) ? "JW" : "General");
+function collections(){
+  const set = new Set(Object.keys(BOOKS).map(collectionOf));
+  return [...set].sort((a, b) => (a === "General") - (b === "General") || a.localeCompare(b, "ro"));
 }
 function bookIds(){ return Object.keys(BOOKS).sort((a, b) => (BOOKS[b].kind === "daily") - (BOOKS[a].kind === "daily") || (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
 const isDaily = id => !!(BOOKS[id] && BOOKS[id].kind === "daily");
@@ -907,7 +976,7 @@ function viewDaily(bookId){
   const b = BOOKS[bookId], fav = (ST.fav||{})[bookId], today = dailyToday();
   root.innerHTML = `<div class="view">${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
     <div class="bookhero">${coverHTML(bookId)}<h1>${esc(b.title)}</h1><div class="by">Să examinăm Scripturile în fiecare zi</div>
-      <div class="facts"><span>Română</span><span>${all.length} zile</span></div></div>
+      <div class="facts"><span>Română</span><span>${all.length} zile</span></div>${collectionPill(bookId)}</div>
     <div class="actions"><button class="btn primary" id="dPlayToday">${icon("play", true)} Ascultă textul de azi</button>
       <button class="btn sq ${fav ? "on" : ""}" id="dFav" aria-label="Favorit">${icon("heart", fav)}</button></div>
     <h2 class="sec">Zile</h2>
@@ -918,6 +987,7 @@ function viewDaily(bookId){
         <span class="x"><b>${d.ch.date === t ? "Azi" : esc(d.ch.title)}</b><span>${esc(d.ch.sub || "")}</span></span>
         ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`; }).join("")}</div></div>`;
   $("#dFav").onclick = () => toggleFav(bookId);
+  const cp = $("#colPill"); if(cp && !cp.disabled) cp.onclick = () => collectionSheet(bookId);
   $("#dPlayToday").onclick = () => { if(today) playChapter(today.book, today.ch.id, {open: true, t: chapterDone(today.ch) ? 0 : null}); };
   root.querySelectorAll("[data-m]").forEach(x => x.onclick = () => { dailyMonth = x.dataset.m; viewDaily(bookId); });
   root.querySelectorAll(".dayrow").forEach(el => el.onclick = () => playChapter(el.dataset.b, el.dataset.c, {open: true, t: chapterDone({id: el.dataset.c}) ? 0 : null}));
@@ -926,25 +996,55 @@ function viewDaily(bookId){
 
 let libFilter = "all", libQuery = "";
 function viewLibrary(){
-  const f = [["all","Toate"],["prog","În curs"],["fav","Favorite"],["done","Terminate"],["new","Neîncepute"]];
+  const cols = collections();
+  const f = [["all","Toate"], ...cols.map(c => ["c:" + c, c]), ["fav","Favorite"], ["prog","În curs"]];
+  if(!f.some(([k]) => k === libFilter)) libFilter = "all";
   root.innerHTML = `<div class="view">${appbar()}<div style="display:flex;justify-content:space-between;align-items:center"><h1 class="big">Bibliotecă</h1>
-      ${USER.admin && B.addBook ? `<button class="addbtn" id="addBook">${icon("plus")}Adaugă</button>` : ""}</div>
-
+      ${USER.admin && B.mode !== "local" ? `<button class="addbtn" id="addBook">${icon("plus")}Adaugă</button>` : ""}</div>
     <label class="search">${icon("search")}<input id="q" type="search" placeholder="Caută o carte" value="${esc(libQuery)}"></label>
-    <div class="chips">${f.map(([k, l]) => `<button class="chip ${libFilter === k ? "on" : ""}" data-f="${k}">${l}</button>`).join("")}</div>
+    <div class="chips">${f.map(([k, l]) => `<button class="chip ${libFilter === k ? "on" : ""}" data-f="${esc(k)}">${esc(l)}</button>`).join("")}</div>
     <div id="libGrid"></div></div>`;
   const draw = () => {
+    const q = libQuery.trim().toLowerCase();
     const ids = bookIds().filter(id => { const p = bookProgress(id);
-      if(libQuery && !BOOKS[id].title.toLowerCase().includes(libQuery.toLowerCase())) return false;
-      if(isDaily(id)) return libFilter === "all" || (libFilter === "fav" && (ST.fav||{})[id]);
-      return libFilter === "all" || (libFilter === "fav" && (ST.fav||{})[id]) || (libFilter === "prog" && p.started && p.pct < .995)
-        || (libFilter === "done" && p.pct >= .995) || (libFilter === "new" && !p.started); });
-    $("#libGrid").innerHTML = ids.length ? `<div class="grid">${ids.map(tile).join("")}</div>` : `<div class="empty">Nimic aici.</div>`;
+      if(q && !(BOOKS[id].title + " " + (BOOKS[id].author || "")).toLowerCase().includes(q)) return false;
+      if(libFilter === "all") return true;
+      if(libFilter.startsWith("c:")) return collectionOf(id) === libFilter.slice(2);
+      if(libFilter === "fav") return !!(ST.fav||{})[id];
+      if(libFilter === "prog") return !isDaily(id) && p.started && p.pct < .995;
+      return true; });
+    if(!ids.length){ $("#libGrid").innerHTML = `<div class="empty">Nimic aici.</div>`; return; }
+    if(libFilter === "all" && !q && cols.length > 1){
+      // one shelf per collection
+      $("#libGrid").innerHTML = cols.map(c => { const list = ids.filter(id => collectionOf(id) === c); if(!list.length) return "";
+        return `<h2 class="sec">${esc(c)} <a href="#" data-col="${esc(c)}">${list.length} ${list.length === 1 ? "carte" : "cărți"}</a></h2><div class="shelf">${list.map(tile).join("")}</div>`; }).join("");
+      $("#libGrid").querySelectorAll("[data-col]").forEach(x => x.onclick = ev => { ev.preventDefault(); libFilter = "c:" + x.dataset.col; viewLibrary(); });
+    } else {
+      $("#libGrid").innerHTML = `<div class="grid">${ids.map(tile).join("")}</div>`;
+    }
   };
   root.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { libFilter = b.dataset.f; viewLibrary(); });
   $("#q").addEventListener("input", e => { libQuery = e.target.value; draw(); });
   const ab = $("#addBook"); if(ab) ab.onclick = addBookSheet;
   draw();
+}
+
+function collectionSheet(id){
+  const cols = collections();
+  sheet(`<h3>Colecția cărții</h3><p style="color:var(--muted);font-size:14px;margin:0 0 10px">${esc(BOOKS[id].title)}</p>
+    ${cols.map(c => `<button class="opt ${collectionOf(id) === c ? "on" : ""}" data-c="${esc(c)}">${esc(c)}${collectionOf(id) === c ? icon("check") : ""}</button>`).join("")}
+    <div class="row2"><input type="text" id="newCol" placeholder="Colecție nouă, de ex. SF" maxlength="40"><button class="addbtn" id="saveCol">Salvează</button></div>`,
+    el => {
+      const set = async name => { name = (name || "").trim(); if(!name) return;
+        try{ await B.setCollection(id, name); BOOKS[id].collection = name; saveCache(); closeSheet(); toast(`Mutată în „${name}”`); render(); }
+        catch(e){ toast("Nu s-a putut salva: " + (e.code || e.message)); } };
+      el.querySelectorAll("[data-c]").forEach(b => b.onclick = () => set(b.dataset.c));
+      $("#saveCol").onclick = () => set($("#newCol").value);
+    });
+}
+function collectionPill(id){
+  const edit = USER.admin && B.mode !== "local";
+  return `<div style="text-align:center"><button class="colpill" id="colPill" ${edit ? "" : "disabled"}>${esc(collectionOf(id))}${edit ? icon("edit") : ""}</button></div>`;
 }
 
 function viewBook(id){
@@ -955,15 +1055,18 @@ function viewBook(id){
   const label = playingThis ? "Pauză" : p.pct >= .995 ? "Ascultă din nou" : p.started ? "Continuă" : "Ascultă";
   root.innerHTML = `<div class="view">${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
     <div class="bookhero">${coverHTML(id)}<h1>${esc(b.title)}</h1><div class="by">${esc(b.author || "")}</div>
-      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${fmtDur(p.total)}</span></div></div>
+      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${fmtDur(p.total)}</span></div>${collectionPill(id)}</div>
     <div class="actions"><button class="btn primary" id="bPlay">${icon(playingThis ? "pause" : "play", true)} ${label}</button>
       <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button></div>
     ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="progline">${p.pct >= .995 ? "Ai terminat cartea" : `${Math.round(p.pct*100)}% ascultat · rămas ${fmtDur(p.left)}`}</div>` : ""}
     <h2 class="sec">Capitole</h2>
-    <div class="chs">${chs.map((c, i) => chapterRow(c, i)).join("")}</div></div>`;
+    <div class="chs">${chs.map((c, i) => chapterRow(c, i)).join("")}</div>
+    ${bookmarksOf(id).length ? `<h2 class="sec">Semne de carte</h2><div class="set" id="bmList">${bookmarkRows(id)}</div>` : ""}</div>`;
   $("#bPlay").onclick = () => { if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
     playChapter(id, r.ch.id, {t: r.t, open: true}); };
   $("#bFav").onclick = () => toggleFav(id);
+  const cp = $("#colPill"); if(cp && !cp.disabled) cp.onclick = () => collectionSheet(id);
+  bindBookmarks(id);
   root.querySelectorAll("[data-c]").forEach(el => el.onclick = () => playChapter(id, el.dataset.c, {open: true}));
 }
 
@@ -988,7 +1091,7 @@ function viewProfile(){
   const seg = (key, vals, fmt) => `<div class="seg" data-k="${key}">${vals.map(v => `<button class="${p[key] === v ? "on" : ""}" data-v="${v}">${fmt(v)}</button>`).join("")}</div>`;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Profil</h1>
-    <div class="continue" style="box-shadow:none"><div class="avatar" style="width:56px;height:56px;font-size:24px">${esc((USER.name||"?")[0].toUpperCase())}</div>
+    <div class="continue" style="box-shadow:none"><div class="avatar" style="width:56px;height:56px;font-size:24px">${avatarInner()}</div>
       <div class="meta"><div class="t" style="margin:0">${esc(USER.name)}</div><div class="c">${esc(USER.email || "")}</div></div></div>
     <div class="stats"><div class="stat"><b>${fmtDur((ST.stats||{}).sec || 0).replace(" min","m").replace(" h","h")}</b><span>ascultat</span></div>
       <div class="stat"><b>${done}</b><span>${done === 1 ? "carte terminată" : "cărți terminate"}</span></div>
@@ -1024,16 +1127,18 @@ async function addBookSheet(){
     const list = Object.entries(reqs || {}).sort((x, y) => (y[1].at||0) - (x[1].at||0)).slice(0, 8);
     const st = {nou: ["așteaptă Mac-ul", ""], lucru: ["se generează", ""], gata: ["gata", "ok"], eroare: ["eroare", "err"]};
     $("#sheetBody").innerHTML = `<h3>Adaugă o carte</h3>
-      <p style="color:var(--muted);font-size:14px;margin:0 0 12px">Lipește linkul de pe wol.jw.org (un capitol sau cuprinsul cărții). Studio de pe Mac o transformă în audio și o publică singur, când e pornit.</p>
-      <input type="url" id="bookUrl" placeholder="https://wol.jw.org/…" autocomplete="off">
-      <label style="display:flex;gap:10px;align-items:center;font-size:14px;margin:12px 2px"><input type="checkbox" id="whole" checked> Dacă e un capitol, adaugă toată cartea</label>
+      <p style="color:var(--muted);font-size:14px;margin:0 0 12px">Lipește linkul unei cărți sau al unui articol. Studio de pe Mac îl transformă în audio și îl publică singur, când e pornit.</p>
+      <input type="url" id="bookUrl" placeholder="https://…" autocomplete="off">
+      <input type="text" id="bookCol" list="colList" placeholder="Colecție (de ex. General, SF, JW)" style="margin-top:10px" maxlength="40">
+      <datalist id="colList">${collections().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+      <label style="display:flex;gap:10px;align-items:center;font-size:14px;margin:12px 2px"><input type="checkbox" id="whole" checked> Dacă linkul e un capitol, adaugă toată cartea</label>
       <button class="btn primary" id="sendBook" style="width:100%">Trimite</button>
       ${list.length ? `<h3 style="margin-top:20px">Cereri recente</h3>` + list.map(([k, r]) => { const s = st[r.status] || [r.status, ""];
         return `<div class="req"><span style="min-width:0"><b>${esc(r.book || r.url)}</b><small>${esc(r.msg || r.url)}</small></span><span class="pill ${s[1]}">${s[0]}</span></div>`; }).join("") : ""}`;
     $("#sendBook").onclick = async () => {
       const url = $("#bookUrl").value.trim();
       if(!/^https?:\/\//.test(url)){ toast("Lipește un link care începe cu https://"); return; }
-      try{ await B.addBook(url, $("#whole").checked); toast("Trimis. Apare în bibliotecă după ce Studio îl termină."); draw(); }
+      try{ await B.addBook(url, $("#whole").checked, $("#bookCol").value.trim()); toast("Trimis. Apare în bibliotecă după ce Studio îl termină."); draw(); }
       catch(e){ toast("Nu s-a putut trimite: " + (e.code || e.message)); }
     };
   };
@@ -1182,7 +1287,7 @@ async function onUser(u){
   }
   USER.admin = !!adm;
   BOOKS = BOOKS || {}; ST = ST || {};
-  if(B.mode !== "local"){ store.set("ab_last_user", {uid: u.uid, name: u.name, email: u.email, admin: USER.admin}); saveCache(); }
+  if(B.mode !== "local"){ store.set("ab_last_user", {uid: u.uid, name: u.name, email: u.email, photo: u.photo || "", admin: USER.admin}); saveCache(); }
   showApp();
 }
 
