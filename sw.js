@@ -1,7 +1,7 @@
 /* Opens instantly: the app shell comes from the phone's cache and is refreshed in the
    background (next start gets the new version; pull-to-refresh gets it right away).
    Audio is streamed, not cached. */
-const CACHE = "sona-v12";
+const CACHE = "sona-v13";
 const SHELL = ["./", "index.html", "manifest.json", "firebase-config.js", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

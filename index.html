@@ -164,6 +164,26 @@ nav.tabs a.on{color:var(--accent)}
 .sheet .row2{display:flex;gap:8px;margin-top:10px}
 .sheet .row2 input{flex:1}
 .sheet input[type=text]{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px;outline:none;color:var(--ink);font:inherit}
+.view{position:relative;z-index:0}
+.bookbg{position:absolute;left:-18px;right:-18px;top:0;height:460px;z-index:-1;overflow:hidden;pointer-events:none;
+  background:linear-gradient(180deg,hsl(var(--h) 55% 55% / .38),hsl(var(--h) 55% 55% / .12) 60%,transparent);
+  -webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}
+.bookbg img{width:100%;height:100%;object-fit:cover;filter:blur(38px) saturate(1.5);opacity:.45;transform:scale(1.4)}
+.btn,.chip,.chrow,.tile .cover,.nowc .cover,.opt,.dayrow,.addbtn,.playbig,.pplay,.iconbtn{transition:transform .12s ease,background-color .2s}
+.btn:active,.chip:active,.addbtn:active,.playbig:active,.pplay:active,.iconbtn:active{transform:scale(.95)}
+.tile:active .cover,.nowc .cv:active .cover{transform:scale(.97)}
+.chrow:active,.dayrow:active,.opt:active{transform:scale(.99)}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#root.anim .view{animation:viewIn .24s ease-out}
+.btn.danger{background:#e5484d;color:#fff}
+.btn.plain{background:var(--card);color:var(--ink);margin-top:8px}
+.chk{display:flex;gap:10px;align-items:center;font-size:15px;margin:12px 2px}
+.week{display:flex;align-items:flex-end;gap:10px;height:110px;padding:14px 16px 8px;background:var(--card);border-radius:18px}
+.week .d{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.week .d i{display:block;width:100%;max-width:26px;border-radius:7px;background:color-mix(in srgb,var(--accent) 30%,transparent);min-height:4px}
+.week .d.today i{background:var(--accent)}
+.week .d small{font-size:11px;color:var(--muted);font-weight:650}
+.weeksum{font-size:14px;color:var(--muted);margin:-4px 2px 10px}
 .shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
 .shelf::-webkit-scrollbar{display:none}
 .shelf .tile{width:118px;flex:none;scroll-snap-align:start}
@@ -432,6 +452,7 @@ const P = {
   refresh:'<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   bookmark:'<path d="M6 3h12v18l-6-4.5L6 21z"/>',
   edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
   trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
@@ -1053,21 +1074,62 @@ function viewBook(id){
   const chs = chaptersOf(id), p = bookProgress(id), r = resumePoint(id), fav = (ST.fav||{})[id];
   const playingThis = PL.book === id && !audio.paused;
   const label = playingThis ? "Pauză" : p.pct >= .995 ? "Ascultă din nou" : p.started ? "Continuă" : "Ascultă";
-  root.innerHTML = `<div class="view">${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
+  root.innerHTML = `<div class="view"><div class="bookbg" style="--h:${b.hue ?? hueOf(b.title)}">${b.cover ? `<img src="${esc(b.cover)}" alt="">` : ""}</div>
+    ${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
     <div class="bookhero">${coverHTML(id)}<h1>${esc(b.title)}</h1><div class="by">${esc(b.author || "")}</div>
       <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${fmtDur(p.total)}</span></div>${collectionPill(id)}</div>
     <div class="actions"><button class="btn primary" id="bPlay">${icon(playingThis ? "pause" : "play", true)} ${label}</button>
-      <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button></div>
+      <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button>
+      <button class="btn sq" id="bMore" aria-label="Mai multe">${icon("more")}</button></div>
     ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="progline">${p.pct >= .995 ? "Ai terminat cartea" : `${Math.round(p.pct*100)}% ascultat · rămas ${fmtDur(p.left)}`}</div>` : ""}
     <h2 class="sec">Capitole</h2>
     <div class="chs">${chs.map((c, i) => chapterRow(c, i)).join("")}</div>
     ${bookmarksOf(id).length ? `<h2 class="sec">Semne de carte</h2><div class="set" id="bmList">${bookmarkRows(id)}</div>` : ""}</div>`;
-  $("#bPlay").onclick = () => { if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
+  $("#bPlay").onclick = () => {
+    if(p.pct >= .995 && !playingThis) return resetSheet(id);   // finished: listening again starts over
+    if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
     playChapter(id, r.ch.id, {t: r.t, open: true}); };
+  $("#bMore").onclick = () => moreSheet(id);
   $("#bFav").onclick = () => toggleFav(id);
   const cp = $("#colPill"); if(cp && !cp.disabled) cp.onclick = () => collectionSheet(id);
   bindBookmarks(id);
   root.querySelectorAll("[data-c]").forEach(el => el.onclick = () => playChapter(id, el.dataset.c, {open: true}));
+}
+
+function moreSheet(id){
+  const n = bookmarksOf(id).length, p = bookProgress(id);
+  sheet(`<h3>${esc(BOOKS[id].title)}</h3>
+    <button class="opt" id="mReset"><span>Ascultă din nou de la început</span>${icon("back")}</button>
+    ${n ? `<button class="opt" id="mMarks"><span>Semne de carte (${n})</span>${icon("bookmark")}</button>` : ""}
+    ${USER.admin && B.mode !== "local" ? `<button class="opt" id="mCol"><span>Mută în altă colecție</span>${icon("edit")}</button>` : ""}
+    <div style="color:var(--muted);font-size:13px;margin-top:10px">${p.started ? `${Math.round(p.pct*100)}% ascultat` : "Neînceput"} · ${chaptersOf(id).length} capitole · ${fmtDur(p.total)}</div>`,
+    el => {
+      $("#mReset").onclick = () => resetSheet(id);
+      const mm = $("#mMarks"); if(mm) mm.onclick = () => { closeSheet(); setTimeout(() => $("#bmList")?.scrollIntoView({behavior: "smooth", block: "start"}), 250); };
+      const mc = $("#mCol"); if(mc) mc.onclick = () => collectionSheet(id);
+    });
+}
+function resetSheet(id){
+  const n = bookmarksOf(id).length;
+  sheet(`<h3>Ascultă din nou de la început</h3>
+    <p style="color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 6px">Progresul din „${esc(BOOKS[id].title)}” se șterge și pornești de la capitolul 1.
+    ${n ? `<b style="color:var(--ink)">Atenție: se șterg și cele ${n} ${n === 1 ? "semn de carte" : "semne de carte"}.</b>` : ""}</p>
+    ${n ? `<label class="chk"><input type="checkbox" id="keepBm"> Păstrează totuși semnele de carte</label>` : ""}
+    <button class="btn danger" id="doReset" style="width:100%;margin-top:8px">Resetează și ascultă</button>
+    <button class="btn plain" id="noReset" style="width:100%">Renunță</button>`,
+    el => {
+      $("#noReset").onclick = closeSheet;
+      $("#doReset").onclick = async () => { const keep = !!($("#keepBm") && $("#keepBm").checked); closeSheet(); await resetBook(id, keep); };
+    });
+}
+async function resetBook(id, keepBookmarks){
+  const chs = chaptersOf(id); if(!chs.length) return;
+  if(PL.book === id) audio.pause();
+  await Promise.all(chs.filter(c => (ST.pos || {})[c.id]).map(c => save(`pos/${c.id}`, null)));
+  if(!keepBookmarks) await Promise.all(bookmarksOf(id).map(m => save(`bm/${m.k}`, null)));
+  toast("Cartea pornește de la început");
+  await playChapter(id, chs[0].id, {t: 0, open: true});
+  render();
 }
 
 function viewHistory(){
@@ -1084,6 +1146,17 @@ function viewHistory(){
   root.querySelectorAll(".hrow").forEach(el => el.onclick = () => playChapter(el.dataset.b, el.dataset.c, {t: +el.dataset.t, open: true}));
 }
 
+function weekChart(){
+  const days = [], now = new Date(); now.setHours(0, 0, 0, 0);
+  for(let i = 6; i >= 0; i--){ const d = new Date(now); d.setDate(d.getDate() - i); days.push({start: d.getTime(), sec: 0, label: d.toLocaleDateString("ro-RO", {weekday: "narrow"}).toUpperCase(), today: i === 0}); }
+  for(const h of Object.values(ST.history || {})){
+    const dur = Math.max(0, (h.to || 0) - (h.from || 0)); if(!dur || !h.at) continue;
+    const day = days.find(d => h.at >= d.start && h.at < d.start + 864e5); if(day) day.sec += dur;
+  }
+  const max = Math.max(60, ...days.map(d => d.sec)), total = days.reduce((s, d) => s + d.sec, 0);
+  return `<h2 class="sec">Ultimele 7 zile</h2><div class="weeksum">Ai ascultat ${fmtDur(total)}</div>
+    <div class="week">${days.map(d => `<div class="d ${d.today ? "today" : ""}"><i style="height:${Math.round(d.sec / max * 70) + 4}px" title="${fmtDur(d.sec)}"></i><small>${d.label}</small></div>`).join("")}</div>`;
+}
 function viewProfile(){
   const ids = bookIds(), p = prefs();
   const done = ids.filter(id => bookProgress(id).pct >= .995).length;
@@ -1093,6 +1166,7 @@ function viewProfile(){
   root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Profil</h1>
     <div class="continue" style="box-shadow:none"><div class="avatar" style="width:56px;height:56px;font-size:24px">${avatarInner()}</div>
       <div class="meta"><div class="t" style="margin:0">${esc(USER.name)}</div><div class="c">${esc(USER.email || "")}</div></div></div>
+    ${weekChart()}
     <div class="stats"><div class="stat"><b>${fmtDur((ST.stats||{}).sec || 0).replace(" min","m").replace(" h","h")}</b><span>ascultat</span></div>
       <div class="stat"><b>${done}</b><span>${done === 1 ? "carte terminată" : "cărți terminate"}</span></div>
       <div class="stat"><b>${chDone}</b><span>capitole</span></div></div>
@@ -1244,7 +1318,7 @@ function render(){
   if(tab === "library") viewLibrary(); else if(tab === "daily") viewDaily(); else if(tab === "book") viewBook(decodeURIComponent(arg || ""));
   else if(tab === "history") viewHistory(); else if(tab === "profile") viewProfile(); else viewHome();
 }
-window.addEventListener("hashchange", () => { closeSheet(); render(); window.scrollTo(0, 0); });
+window.addEventListener("hashchange", () => { closeSheet(); root.classList.add("anim"); render(); window.scrollTo(0, 0); setTimeout(() => root.classList.remove("anim"), 300); });
 const tabsEl = $("#tabs");
 tabsEl.querySelector('[data-tab="home"]').innerHTML = icon("home") + "Acasă";
 tabsEl.querySelector('[data-tab="library"]').innerHTML = icon("lib") + "Bibliotecă";
