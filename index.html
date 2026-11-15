@@ -394,6 +394,49 @@ nav.tabs a.on{color:var(--accent)}
 @keyframes sp-bar{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
 @keyframes sp-in{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
 @media (min-width:760px){ .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))} }
+
+/* ---------- reading: one page for reading and listening ---------- */
+:root{--h1:rgba(245,197,24,.34);--h2:rgba(63,207,122,.28);--h3:rgba(76,155,255,.34);--h4:rgba(240,96,158,.32)}
+@media (prefers-color-scheme: light){:root{--h1:#fde58a;--h2:#c6f2d5;--h3:#cfe2ff;--h4:#fcd2e5}}
+html[data-theme="light"]{--h1:#fde58a;--h2:#c6f2d5;--h3:#cfe2ff;--h4:#fcd2e5}
+html[data-theme="dark"]{--h1:rgba(245,197,24,.34);--h2:rgba(63,207,122,.28);--h3:rgba(76,155,255,.34);--h4:rgba(240,96,158,.32)}
+body.reading nav.tabs{display:none}
+body.reading .mini{bottom:calc(var(--safe-b) + 10px)}
+body.reading .view{padding-bottom:calc(var(--mini-h) + var(--safe-b) + 110px)}
+.rtools{display:flex;gap:8px}
+.back.aa{width:auto;padding:0 14px;border-radius:99px;font:700 15px var(--serif)}
+.rhead{text-align:center;margin:4px 0 26px}
+.rhead .k{font-size:13px;color:var(--muted)}
+.rhead h1{font:700 27px/1.18 var(--serif);margin:6px 0 14px;text-wrap:balance}
+.rhead .hint{font-size:13px;color:var(--muted);margin:12px 0 0}
+.rtext{font:19px/1.7 var(--serif);color:var(--ink);overflow-wrap:break-word}
+.rtext p{margin:0 0 18px}
+.rtext h3{font:700 1.05em/1.35 var(--serif);margin:28px 0 12px;color:var(--accent)}
+.rtext span{border-radius:3px;cursor:pointer;transition:color .25s,background-color .25s;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.rtext.sync span.read{color:color-mix(in srgb,var(--ink) 60%,transparent)}
+.rtext span.hl{--hc:var(--h1);color:var(--ink);background-image:linear-gradient(transparent 6%,var(--hc) 6%,var(--hc) 97%,transparent 97%)}
+.rtext span.h2{--hc:var(--h2)} .rtext span.h3{--hc:var(--h3)} .rtext span.h4{--hc:var(--h4)}
+.rtext span.cur{color:var(--ink);background-color:color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.rtext span.sel{color:var(--ink);background-color:color-mix(in srgb,var(--accent) 14%,transparent);text-decoration:underline 2px var(--accent);text-underline-offset:.24em;text-decoration-skip-ink:none}
+.rtext span.bm::before{content:"";display:inline-block;width:.5em;height:.74em;margin-right:.3em;vertical-align:-.04em;background:var(--accent);
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 72%,0 100%)}
+@keyframes rflash{0%,45%{background-color:color-mix(in srgb,var(--accent) 34%,transparent)}100%{background-color:transparent}}
+.rtext span.flash{animation:rflash 1.8s ease-out}
+.rnav{margin-top:30px}
+.rnav .btn{margin:0}
+.selbar{position:fixed;left:50%;bottom:calc(var(--safe-b) + 86px);z-index:30;display:flex;align-items:center;gap:2px;padding:6px 8px;
+  background:var(--card2);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow);max-width:calc(100vw - 24px);
+  transform:translate(-50%,16px);opacity:0;pointer-events:none;transition:transform .18s ease,opacity .18s ease}
+body.reading:has(.mini.hidden) .selbar{bottom:calc(var(--safe-b) + 18px)}
+.selbar.on{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+.selbar .sw{width:36px;height:38px;display:grid;place-items:center;flex:none}
+.selbar .sw i{display:block;width:24px;height:24px;border-radius:50%;background:var(--c)}
+.selbar .sw.on i{box-shadow:0 0 0 2px var(--card2),0 0 0 4px var(--c)}
+.selbar .sep{width:1px;height:24px;background:var(--line);margin:0 4px;flex:none}
+.selbar .ab{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--ink);flex:none}
+.selbar .ab.on{color:var(--accent)}
+.selbar .ab svg{width:21px;height:21px}
+.hlbar{width:4px;align-self:stretch;border-radius:4px;flex:none}
 </style>
 </head>
 <body>
@@ -423,9 +466,7 @@ nav.tabs a.on{color:var(--accent)}
   <div class="pbody">
     <div class="cover pcover" id="pCover"></div>
     <div class="ptitles"><b id="pTitle"></b><span id="pSub"></span></div>
-    <div class="reader" id="reader"></div>
   </div>
-  <div class="float"><button class="fp" id="fPlay" aria-label="Redă"></button><button id="fShow" aria-label="Arată controalele"></button></div>
   <div class="pctl" style="max-width:520px;width:100%;margin:0 auto">
     <div class="scrub"><input type="range" id="seek" min="0" max="1000" value="0" aria-label="Poziție"></div>
     <div class="times"><span id="tCur">0:00</span><span id="tLeft">-0:00</span></div>
@@ -449,6 +490,7 @@ nav.tabs a.on{color:var(--accent)}
 <div class="sheetbg" id="sheetBg"></div>
 <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
 <div class="toast" id="toast"></div>
+<div class="selbar" id="selbar" role="toolbar" aria-label="Subliniere"></div>
 <div id="ptr" aria-hidden="true"></div>
 <audio id="audio" preload="metadata" playsinline></audio>
 
@@ -550,6 +592,7 @@ async function FirebaseBackend(cfg){
   const me = () => auth.currentUser;
   const val = async p => (await D.get(D.ref(db, p))).val();
   const uref = p => D.ref(db, `ab/users/${me().uid}/${p}`);
+  const bookBase = (id, kind) => BOOKS[id] && BOOKS[id].own ? `ab/own/${me().uid}/${kind}` : `ab/${kind}`;
   const wrapUser = u => u && {uid: u.uid, name: u.displayName || (u.email||"").split("@")[0], email: u.email, photo: u.photoURL || ""};
   return {
     mode: "firebase",
@@ -564,9 +607,12 @@ async function FirebaseBackend(cfg){
       if(name) await A.updateProfile(c.user, {displayName: name}); return wrapUser(c.user); },
     async signOut(){ await A.signOut(auth); },
     async resetPassword(email){ await A.sendPasswordResetEmail(auth, email); },
-    async books(){ return (await val("ab/books")) || {}; },
+    async books(){
+      const [pub, own] = await Promise.all([val("ab/books"), val(`ab/own/${me().uid}/books`).catch(() => null)]);
+      const out = pub || {}; for(const [k, v] of Object.entries(own || {})) out[k] = {...v, own: true};
+      return out; },
     async audioUrl(bookId, ch){ if(!ch.audio) throw new Error("capitol fără audio"); return ch.audio; },
-    async transcript(bookId, ch){ const t = await val(`ab/texts/${bookId}/${ch.id}`); if(!t) throw new Error("fără text"); return JSON.parse(t); },
+    async transcript(bookId, ch){ const t = await val(`${bookBase(bookId, "texts")}/${bookId}/${ch.id}`); if(!t) throw new Error("fără text"); return JSON.parse(t); },
     async state(){ return (await val(`ab/users/${me().uid}`)) || {}; },
     async write(path, value){ await D.set(uref(path), value); },
     async addHistory(entry){ const r = D.push(uref("history")); await D.set(r, entry); return r.key; },
@@ -583,8 +629,8 @@ async function FirebaseBackend(cfg){
     async deny(uid){ await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async revoke(uid){ await D.set(D.ref(db, `ab/allowed/${uid}`), null); },
     async addBook(url, whole, collection){ const r = D.push(D.ref(db, "ab/inbox")); await D.set(r, {url, whole: !!whole, collection: collection || "", status: "nou", at: Date.now(), by: me().uid}); },
-    async setCollection(id, name){ await D.set(D.ref(db, `ab/books/${id}/collection`), name); },
-    async setCover(id, url){ await D.set(D.ref(db, `ab/books/${id}/cover`), url); },
+    async setCollection(id, name){ await D.set(D.ref(db, `${bookBase(id, "books")}/${id}/collection`), name); },
+    async setCover(id, url){ await D.set(D.ref(db, `${bookBase(id, "books")}/${id}/cover`), url); },
     async bookRequests(){ return (await val("ab/inbox")) || {}; },
   };
 }
@@ -665,11 +711,16 @@ async function cachedAudioUrl(ch){
     return URL.createObjectURL(await r.blob()); }catch(e){ return null; }
 }
 async function downloadBook(id, onProgress){
-  const chs = chaptersOf(id).filter(c => c.audio); const c = await caches.open(AUDIO_CACHE); const dl = DL.get();
+  const chs = chaptersOf(id).filter(c => c.audio || c.pending); const c = await caches.open(AUDIO_CACHE); const dl = DL.get();
   let i = 0, opaque = 0, failed = 0;
   for(const ch of chs){
     i++; onProgress && onProgress(i, chs.length);
     if(dl[ch.id]) continue;
+    if(!ch.audio){   // text only, for now
+      try{ const t = await B.transcript(id, ch); await c.put(textKey(id, ch.id), new Response(JSON.stringify(t), {headers: {"Content-Type": "application/json"}})); dl[ch.id] = Date.now(); DL.set(dl); }
+      catch(e){ failed++; }
+      continue;
+    }
     try{
       let r = null;
       try{ r = await fetch(ch.audio, {mode: "cors"}); if(!r.ok) r = null; }catch(e){ r = null; }
@@ -686,7 +737,7 @@ async function removeDownload(id){
   for(const ch of chaptersOf(id)){ if(ch.audio) await c.delete(ch.audio); await c.delete(textKey(id, ch.id)); delete dl[ch.id]; }
   DL.set(dl);
 }
-const bookDownloaded = id => { const chs = chaptersOf(id).filter(c => c.audio); return chs.length > 0 && chs.every(c => isDownloaded(c.id)); };
+const bookDownloaded = id => { const chs = chaptersOf(id).filter(c => c.audio || c.pending); return chs.length > 0 && chs.every(c => isDownloaded(c.id)); };
 
 /* =====================================================================
    Player
@@ -806,7 +857,6 @@ function renderPlayState(){
   const playing = !audio.paused;
   $("#miniPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#pPlay").innerHTML = icon(playing ? "pause" : "play", true);
-  $("#fPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#pPlay").setAttribute("aria-label", playing ? "Pauză" : "Redă");
   if($(".nowc") && (location.hash || "#/home").startsWith("#/home")) render();
   const bp = $("#bPlay"); if(bp && location.hash.startsWith("#/book/") && decodeURIComponent(location.hash.slice(7)) === PL.book) render();
@@ -828,45 +878,52 @@ function renderProgress(){
   if(Math.floor(t) % 5 === 0) mediaPos();
 }
 
-/* read-along text */
-async function loadTranscript(){
-  const r = $("#reader"); r.innerHTML = `<p style="color:var(--muted)">Se încarcă textul…</p>`; PL.cues = []; PL.spans = [];
-  const ch = PL.ch;
-  try{
-    let data = null;
-    if(isDownloaded(ch.id)){ try{ const r = await (await caches.open(AUDIO_CACHE)).match(textKey(PL.book, ch.id)); if(r) data = await r.json(); }catch(e){} }
-    if(!data) data = await B.transcript(PL.book, ch);
-    if(PL.ch !== ch) return;
-    let html = "";
-    for(const b of data.blocks || []){
-      const inner = b.s.map(s => { PL.cues.push(s.t); return `<span data-i="${PL.cues.length-1}">${esc(s.o)}</span>`; }).join(" ");
-      html += b.k === "h" ? `<h3>${inner}</h3>` : `<p>${inner}</p>`;
-    }
-    r.innerHTML = html; r.style.fontSize = prefs().textSize + "px";
-    PL.spans = [...r.querySelectorAll("span")]; PL.curIdx = -1; highlight(true);
-  }catch(e){ r.innerHTML = `<p style="color:var(--muted)">Textul nu e disponibil pentru acest capitol.</p>`; }
+/* read-along text: the reading page shows it, synced with the audio */
+async function getTranscript(bookId, ch){
+  if(isDownloaded(ch.id)){ try{ const r = await (await caches.open(AUDIO_CACHE)).match(textKey(bookId, ch.id)); if(r) return await r.json(); }catch(e){} }
+  return B.transcript(bookId, ch);
 }
-$("#reader").addEventListener("click", e => { const s = e.target.closest("span[data-i]"); if(!s) return; audio.currentTime = PL.cues[+s.dataset.i] + 0.01; if(audio.paused) audio.play(); });
-["touchstart","wheel"].forEach(ev => $("#reader").addEventListener(ev, () => PL.userScroll = Date.now(), {passive: true}));
-function highlight(force){
+async function loadTranscript(){
+  const ch = PL.ch, book = PL.book; PL.cues = []; PL.texts = []; PL.spans = []; PL.curIdx = -1;
+  // the reading page follows the voice into the next chapter
+  if(document.body.classList.contains("reading") && RD.live && RD.book === book && RD.ch && RD.ch.id !== ch.id) location.hash = readerUrl(book, ch.id);
+  drawReaderAction();
+  try{
+    const data = await getTranscript(book, ch);
+    if(PL.ch !== ch) return;
+    for(const b of data.blocks || []) for(const x of b.s){ PL.cues.push(x.t); PL.texts.push(x.o); }
+  }catch(e){}
+  linkReader();
+}
+function linkReader(noScroll){
+  const on = !!(PL.ch && RD.ch && RD.shown && RD.book === PL.book && RD.ch.id === PL.ch.id && RD.spans.length);
+  PL.spans = on ? RD.spans : []; RD.live = on;
+  const box = $("#rdText"); if(box) box.classList.toggle("sync", on);
+  if(on){ PL.cues = RD.cues; PL.texts = RD.texts; PL.curIdx = -1; highlight(true, noScroll); }
+}
+function highlight(force, noScroll){
   if(!PL.cues.length) return;
   const t = audio.currentTime + 0.15; let lo = 0, hi = PL.cues.length - 1;
   while(lo < hi){ const mid = (lo + hi + 1) >> 1; if(PL.cues[mid] <= t) lo = mid; else hi = mid - 1; }
   if(lo === PL.curIdx && !force) return;
   const prev = PL.curIdx; PL.curIdx = lo;
+  if(!PL.spans.length) return;
   if(prev >= 0 && PL.spans[prev]) PL.spans[prev].classList.remove("cur");
-  if(force){ PL.spans.forEach((s, i) => s.classList.toggle("read", i < lo)); }
+  if(force) PL.spans.forEach((s, i) => s.classList.toggle("read", i < lo));
   else if(prev >= 0 && PL.spans[prev]) PL.spans[prev].classList.add("read");
   const s = PL.spans[lo]; if(!s) return; s.classList.add("cur"); s.classList.remove("read");
-  if($("#player").classList.contains("text") && Date.now() - PL.userScroll > 4000){
-    const r = $("#reader"); r.scrollTo({top: s.offsetTop - r.clientHeight * 0.35, behavior: force ? "auto" : "smooth"});
-  }
+  if(noScroll || RD.sel || Date.now() - PL.userScroll < 5000) return;
+  const r = s.getBoundingClientRect();
+  if(force || r.top < 80 || r.bottom > innerHeight - 170) window.scrollTo({top: scrollY + r.top - innerHeight * 0.3, behavior: force ? "auto" : "smooth"});
 }
 
 /* player UI wiring */
-function openPlayer(){ $("#player").classList.add("open"); setTextMode(PL.textOn); }
-function closePlayer(){ $("#player").classList.remove("open", "immersive"); }
-function setTextMode(on){ PL.textOn = on; store.set("ab_text", on); $("#player").classList.toggle("text", on); if(!on) $("#player").classList.remove("immersive"); $("#tText").classList.toggle("on", on); if(on) setTimeout(() => highlight(true), 50); }
+function openPlayer(){ $("#player").classList.add("open"); }
+function closePlayer(){ $("#player").classList.remove("open"); }
+function openText(){
+  if(!PL.ch) return; closePlayer();
+  const h = readerUrl(PL.book, PL.ch.id); if(location.hash !== h) location.hash = h;
+}
 const fmtSpeed = r => (Math.round(r*100)/100).toString().replace(".", ",") + "×";
 function renderSleep(){
   const on = PL.sleepAt || PL.sleepEnd; $("#tSleep").classList.toggle("on", !!on);
@@ -877,15 +934,6 @@ setInterval(() => { if(PL.sleepAt) renderSleep(); }, 20000);
 $("#miniOpen").onclick = openPlayer; $("#miniCover").onclick = openPlayer;
 $("#miniClose").innerHTML = icon("x");
 $("#miniClose").onclick = () => { audio.pause(); persist(true); store.set("ab_mini_closed", true); $("#mini").classList.add("hidden"); };
-$("#fShow").innerHTML = icon("up"); $("#fShow").onclick = () => $("#player").classList.remove("immersive");
-$("#fPlay").onclick = togglePlay;
-(function immersiveOnScroll(){
-  let y0 = null;
-  const r = $("#reader");
-  r.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; }, {passive: true});
-  r.addEventListener("touchmove", e => { if(y0 != null && Math.abs(e.touches[0].clientY - y0) > 12){ $("#player").classList.add("immersive"); y0 = null; } }, {passive: true});
-  r.addEventListener("wheel", () => $("#player").classList.add("immersive"), {passive: true});
-})();
 $("#miniPlay").onclick = togglePlay; $("#pPlay").onclick = togglePlay;
 $("#pClose").innerHTML = icon("x"); $("#pClose").onclick = closePlayer;
 $("#pChapters").innerHTML = icon("list"); $("#pChapters").onclick = () => chapterSheet();
@@ -895,7 +943,7 @@ function skipIcons(){ const p = prefs(); $("#pBack").innerHTML = icon("back") + 
 $("#pBack").onclick = () => skip(-prefs().back); $("#pFwd").onclick = () => skip(prefs().fwd); $("#miniBack").onclick = () => skip(-prefs().back);
 $("#seek").addEventListener("input", () => { seeking = true; renderProgress(); });
 $("#seek").addEventListener("change", () => { const d = audio.duration || PL.ch?.dur || 0; audio.currentTime = $("#seek").value/1000*d; seeking = false; persist(true); highlight(true); });
-$("#tText").onclick = () => setTextMode(!PL.textOn); $("#textV").innerHTML = icon("text");
+$("#tText").onclick = openText; $("#textV").innerHTML = icon("text");
 $("#tFav").onclick = () => toggleFav(PL.book);
 $("#markV").innerHTML = icon("bookmark"); $("#tMark").onclick = bookmarkSheet;
 $("#tSpeed").onclick = () => sheet(`<h3>Viteza de redare</h3>` + [0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2].map(r =>
@@ -936,7 +984,7 @@ function tile(id){
     return `<a class="tile" href="#/book/${encodeURIComponent(id)}">${coverHTML(id, "", fav ? `<span class="badge">${icon("heart", true)}</span>` : "")}
       <div class="tt">${esc(b.title)}</div><div class="ts">${d && d.book === id ? "Azi: " + esc(d.ch.title.split(", ").pop()) : chaptersOf(id).length + " zile"}</div></a>`; }
   return `<a class="tile" href="#/book/${encodeURIComponent(id)}">${coverHTML(id, "", fav ? `<span class="badge">${icon("heart", true)}</span>` : "")}
-    <div class="tt">${esc(b.title)}</div><div class="ts">${p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
+    <div class="tt">${esc(b.title)}</div><div class="ts">${!playable(id).length ? "Carte de citit" : p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
     ${p.started && p.pct < .995 ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div>` : ""}</a>`;
 }
 function offlinePill(){ return navigator.onLine ? "" : `<span class="offpill">${icon("cloudoff")}Offline</span>`; }
@@ -952,18 +1000,23 @@ function appbar(left){
 const firstName = () => ((USER && USER.name) || "").trim().split(/\s+/)[0];
 function bookmarksOf(bookId){
   return Object.entries(ST.bm || {}).map(([k, v]) => ({k, ...v})).filter(m => m.book === bookId && (BOOKS[bookId].chapters || {})[m.ch])
-    .sort((x, y) => ((BOOKS[bookId].chapters[x.ch].order||0) - (BOOKS[bookId].chapters[y.ch].order||0)) || x.t - y.t);
+    .sort((x, y) => ((BOOKS[bookId].chapters[x.ch].order||0) - (BOOKS[bookId].chapters[y.ch].order||0)) || (x.i ?? -1) - (y.i ?? -1) || (x.t || 0) - (y.t || 0));
 }
 function bookmarkRows(bookId){
   const chs = chaptersOf(bookId);
   return bookmarksOf(bookId).map(m => { const c = BOOKS[bookId].chapters[m.ch], n = chs.findIndex(x => x.id === m.ch) + 1;
     return `<div class="bmrow" data-k="${esc(m.k)}"><span class="ic">${icon("bookmark", true)}</span>
-      <button class="x" data-go="${esc(m.k)}" style="text-align:left"><b>${isDaily(bookId) ? esc(c.title) : `Cap. ${n} · ${esc(c.title)}`} · ${fmtClock(m.t)}</b>
+      <button class="x" data-go="${esc(m.k)}" style="text-align:left"><b>${isDaily(bookId) ? esc(c.title) : `Cap. ${n} · ${esc(c.title)}`}${m.t != null && !c.pending ? " · " + fmtClock(m.t) : ""}</b>
       ${m.quote ? `<span>„${esc(m.quote)}”</span>` : ""}${m.note ? `<em>${esc(m.note)}</em>` : ""}</button>
       <button class="del" data-del="${esc(m.k)}" aria-label="Șterge semnul">${icon("trash")}</button></div>`; }).join("");
 }
 function wireBookmarkRows(el, bookId, after){
-  el.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const m = (ST.bm||{})[b.dataset.go]; if(!m) return; closeSheet(); playChapter(bookId, m.ch, {t: m.t, open: true}); });
+  el.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const m = (ST.bm||{})[b.dataset.go]; if(!m) return; closeSheet();
+    const c = BOOKS[bookId].chapters[m.ch];
+    if(m.i == null && !c.pending) return playChapter(bookId, m.ch, {t: m.t, open: true});
+    closePlayer();
+    if(m.t != null && !c.pending && (audio.paused || !audio.src)) playChapter(bookId, m.ch, {t: m.t, autoplay: false});
+    openReaderAt(bookId, m.ch, m.i ?? 0); });
   el.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => { await save(`bm/${b.dataset.del}`, null); toast("Semn șters"); after(); });
 }
 function bindBookmarks(bookId){
@@ -972,7 +1025,7 @@ function bindBookmarks(bookId){
 }
 function bookmarkSheet(){
   if(!PL.ch) return;
-  const t = audio.currentTime || 0, quote = (PL.spans[PL.curIdx] && PL.spans[PL.curIdx].textContent) || "";
+  const t = audio.currentTime || 0, quote = ((PL.texts || [])[PL.curIdx]) || "";
   const draw = () => {
     const rows = bookmarkRows(PL.book);
     $("#sheetBody").innerHTML = `<h3>Semne de carte</h3>
@@ -982,7 +1035,7 @@ function bookmarkSheet(){
       ${rows ? `<h3 style="margin-top:20px">În această carte</h3><div class="set">${rows}</div>` : ""}`;
     $("#bmAdd").onclick = async () => {
       const k = "b" + Date.now().toString(36);
-      await save(`bm/${k}`, {book: PL.book, ch: PL.ch.id, t: Math.round(t * 10) / 10, at: Date.now(), quote: quote.slice(0, 200), note: $("#bmNote").value.trim()});
+      await save(`bm/${k}`, {book: PL.book, ch: PL.ch.id, t: Math.round(t * 10) / 10, ...(PL.curIdx >= 0 ? {i: PL.curIdx} : {}), at: Date.now(), quote: quote.slice(0, 200), note: $("#bmNote").value.trim()});
       toast("Semn de carte pus"); draw();
     };
     wireBookmarkRows($("#sheetBody"), PL.book, draw);
@@ -1156,7 +1209,7 @@ function collectionSheet(id){
     });
 }
 function collectionPill(id){
-  const edit = USER.admin && B.mode !== "local";
+  const edit = (USER.admin || BOOKS[id].own) && B.mode !== "local";
   return `<div style="text-align:center"><button class="colpill" id="colPill" ${edit ? "" : "disabled"}>${esc(collectionOf(id))}${edit ? icon("edit") : ""}</button></div>`;
 }
 
@@ -1165,22 +1218,25 @@ function viewBook(id){
   if(b.kind === "daily") return viewDaily(id);
   const chs = chaptersOf(id), p = bookProgress(id), r = resumePoint(id), fav = (ST.fav||{})[id];
   const playingThis = PL.book === id && !audio.paused;
-  const label = playingThis ? "Pauză" : p.pct >= .995 ? "Ascultă din nou" : p.started ? "Continuă" : "Ascultă";
+  const textOnly = !playable(id).length, lastRead = store.get("ab_lastread_" + id, null);
+  const label = textOnly ? (lastRead ? "Continuă să citești" : "Începe să citești") : playingThis ? "Pauză" : p.pct >= .995 ? "Ascultă din nou" : p.started ? "Continuă" : "Ascultă";
   root.innerHTML = `<div class="view"><div class="bookbg" style="--h:${b.hue ?? hueOf(b.title)}">${b.cover ? `<img src="${esc(b.cover)}" alt="">` : ""}</div>
     ${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
     <div class="bookhero">${coverHTML(id)}<h1>${esc(b.title)}</h1><div class="by">${esc(b.author || "")}</div>
-      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${fmtDur(p.total)}</span></div>${collectionPill(id)}</div>
+      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${textOnly ? "Doar text, deocamdată" : fmtDur(p.total)}</span>${b.own ? `<span>Doar pentru tine</span>` : ""}</div>${collectionPill(id)}</div>
     <div class="actions"><button class="btn primary" id="bPlay">${icon(playingThis ? "pause" : "play", true)} ${label}</button>
       <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button>
       <button class="btn sq" id="bMore" aria-label="Mai multe">${icon("more")}</button></div>
     ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="progline">${p.pct >= .995 ? "Ai terminat cartea" : `${Math.round(p.pct*100)}% ascultat · rămas ${fmtDur(p.left)}`}</div>` : ""}
     <div class="dlrow">${B.mode === "local" ? "" : bookDownloaded(id)
       ? `<span style="color:var(--ok);display:flex;gap:6px;align-items:center">${icon("check")} Descărcată: merge și fără internet</span>`
-      : `<button class="btn plain" id="bDl" style="margin:0">${icon("dl")} Descarcă pentru ascultare fără internet</button>`}</div>
+      : `<button class="btn plain" id="bDl" style="margin:0">${icon("dl")} Descarcă pentru ${textOnly ? "citit" : "ascultare"} fără internet</button>`}</div>
     <h2 class="sec">Capitole</h2>
     <div class="chs">${chs.map((c, i) => chapterRow(c, i)).join("")}</div>
-    ${bookmarksOf(id).length ? `<h2 class="sec">Semne de carte</h2><div class="set" id="bmList">${bookmarkRows(id)}</div>` : ""}</div>`;
+    ${bookmarksOf(id).length ? `<h2 class="sec">Semne de carte</h2><div class="set" id="bmList">${bookmarkRows(id)}</div>` : ""}
+    ${highlightsOf(id).length ? `<h2 class="sec">Sublinieri</h2><div class="set" id="hlList">${highlightRows(id)}</div>` : ""}</div>`;
   $("#bPlay").onclick = () => {
+    if(textOnly){ const c = chs.find(x => x.id === lastRead) || chs[0]; if(c) location.hash = readerUrl(id, c.id); return; }
     if(p.pct >= .995 && !playingThis) return resetSheet(id);   // finished: listening again starts over
     if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
     playChapter(id, r.ch.id, {t: r.t, open: true}); };
@@ -1196,7 +1252,7 @@ function viewBook(id){
   };
   $("#bFav").onclick = () => toggleFav(id);
   const cp = $("#colPill"); if(cp && !cp.disabled) cp.onclick = () => collectionSheet(id);
-  bindBookmarks(id);
+  bindBookmarks(id); bindHighlights(id);
   root.querySelectorAll("[data-c]").forEach(el => el.onclick = () => playChapter(id, el.dataset.c, {open: true}));
 }
 
@@ -1257,23 +1313,193 @@ async function viewReader(bookId, cid){
   const b = BOOKS[bookId], chs = chaptersOf(bookId), ch = chs.find(c => c.id === cid);
   if(!b || !ch){ location.hash = "#/library"; return; }
   const i = chs.indexOf(ch), prev = chs[i - 1], next = chs[i + 1];
-  root.innerHTML = `<div class="view">${appbar(`<button class="back" onclick="location.hash='#/book/${encodeURIComponent(bookId)}'" aria-label="Înapoi">${icon("left")}</button>`)}
-    <div style="text-align:center;margin:6px 0 18px"><div style="font-size:13px;color:var(--muted)">${esc(b.title)} · capitolul ${i + 1} din ${chs.length}</div>
-      <h1 class="big" style="margin:6px 0 10px">${esc(ch.title)}</h1>
-      ${ch.pending ? `<span class="pill">${icon("wave")} Audio în curând</span>` : `<button class="btn primary" id="rdPlay" style="max-width:260px;margin:0 auto">${icon("play", true)} Ascultă capitolul</button>`}</div>
-    <article class="reader readpage" id="rdText"><p style="color:var(--muted)">Se încarcă textul…</p></article>
-    <div class="actions" style="margin-top:24px">${prev ? `<button class="btn plain" id="rdPrev" style="margin:0">${icon("left")} Anterior</button>` : ""}
-      ${next ? `<button class="btn plain" id="rdNext" style="margin:0">Următorul ›</button>` : ""}</div></div>`;
-  const go = c => c.pending ? (location.hash = `#/read/${encodeURIComponent(bookId)}/${encodeURIComponent(c.id)}`) : playChapter(bookId, c.id, {open: true});
-  if($("#rdPrev")) $("#rdPrev").onclick = () => go(prev);
-  if($("#rdNext")) $("#rdNext").onclick = () => go(next);
-  if($("#rdPlay")) $("#rdPlay").onclick = () => playChapter(bookId, ch.id, {open: true});
-  try{
-    const data = await B.transcript(bookId, ch);
-    $("#rdText").innerHTML = (data.blocks || []).map(bl => { const t = bl.s.map(s => esc(s.o)).join(" ");
-      return bl.k === "h" ? `<h3>${t}</h3>` : `<p>${t}</p>`; }).join("");
-    $("#rdText").style.fontSize = prefs().textSize + "px";
-  }catch(e){ $("#rdText").innerHTML = `<p style="color:var(--muted)">Textul nu e disponibil acum.</p>`; }
+  const keepY = RD.shown && RD.book === bookId && RD.ch && RD.ch.id === cid && !RD.jump ? scrollY : null;
+  Object.assign(RD, {book: bookId, ch, spans: [], cues: [], texts: [], sel: null, live: false, shown: true});
+  store.set("ab_lastread_" + bookId, cid);
+  PL.spans = []; $("#selbar").classList.remove("on");
+  const firstTime = !Object.keys(ST.hl || {}).length;
+  root.innerHTML = `<div class="view">${appbar(`<span class="rtools"><button class="back" id="rdBack" aria-label="Înapoi">${icon("left")}</button><button class="back aa" id="rdSize" aria-label="Mărimea textului">Aa</button></span>`)}
+    <div class="rhead"><div class="k">${esc(b.title)}${isDaily(bookId) ? "" : ` · capitolul ${i + 1} din ${chs.length}`}</div>
+      <h1>${esc(ch.title)}</h1><div id="rdAct"></div>
+      ${firstTime ? `<p class="hint">Atinge o propoziție ca s-o subliniezi sau să pui un semn de carte.</p>` : ""}</div>
+    <article class="rtext" id="rdText" style="font-size:${prefs().textSize}px"><p style="color:var(--muted)">Se încarcă textul…</p></article>
+    <div class="actions rnav">${prev ? `<button class="btn plain" id="rdPrev">${icon("left")} Anterior</button>` : ""}
+      ${next ? `<button class="btn plain" id="rdNext">Următorul ›</button>` : ""}</div></div>`;
+  $("#rdBack").onclick = () => { location.hash = `#/book/${encodeURIComponent(bookId)}`; };
+  $("#rdSize").onclick = () => { const sizes = [16, 19, 23], v = sizes[(sizes.indexOf(prefs().textSize) + 1) % sizes.length];
+    save("prefs/textSize", v); $("#rdText").style.fontSize = v + "px"; toast(v === 16 ? "Text mic" : v === 19 ? "Text normal" : "Text mare"); };
+  if(prev) $("#rdPrev").onclick = () => { location.hash = readerUrl(bookId, prev.id); };
+  if(next) $("#rdNext").onclick = () => { location.hash = readerUrl(bookId, next.id); };
+  drawReaderAction();
+  let data;
+  try{ data = await getTranscript(bookId, ch); }
+  catch(e){ if(RD.ch === ch) $("#rdText").innerHTML = `<p style="color:var(--muted)">Textul nu e disponibil acum.</p>`; return; }
+  if(RD.ch !== ch || !$("#rdText")) return;
+  let n = 0, html = "";
+  for(const bl of data.blocks || []){
+    const inner = bl.s.map(x => { RD.cues.push(x.t ?? -1); RD.texts.push(x.o); return `<span data-i="${n++}">${esc(x.o)}</span>`; }).join(" ");
+    html += bl.k === "h" ? `<h3>${inner}</h3>` : `<p>${inner}</p>`;
+  }
+  const box = $("#rdText"); box.innerHTML = html; RD.spans = [...box.querySelectorAll("span[data-i]")];
+  box.onclick = onReaderTap;
+  paintMarks();
+  const jump = RD.jump && RD.jump.ch === cid ? RD.jump.i : null; RD.jump = null;
+  if(jump != null){ PL.userScroll = Date.now(); scrollToSentence(jump, true); }
+  linkReader(jump != null);       // this chapter is the one playing: the text follows the voice
+  if(jump == null && !RD.live){
+    if(keepY != null) window.scrollTo(0, keepY);
+    else { const last = store.get(rposKey(bookId, cid), null); if(last) scrollToSentence(last, false); }
+  }
+}
+
+/* =====================================================================
+   Reading: highlights in 4 colours and bookmarks, by sentence
+   ===================================================================== */
+const HL = ["#f5c518", "#3fcf7a", "#4c9bff", "#f0609e"];
+const HL_NAMES = ["galben", "verde", "albastru", "roz"];
+const RD = {book: null, ch: null, spans: [], cues: [], texts: [], sel: null, jump: null, live: false, shown: false};
+const readerUrl = (b, c) => `#/read/${encodeURIComponent(b)}/${encodeURIComponent(c)}`;
+const rposKey = (b, c) => `ab_rpos_${b}/${c}`;
+function openReaderAt(bookId, chId, i){
+  RD.jump = {ch: chId, i};
+  const h = readerUrl(bookId, chId);
+  if(location.hash === h) render(); else location.hash = h;
+}
+function drawReaderAction(){
+  const x = $("#rdAct"); if(!x || !RD.ch || !RD.shown) return;
+  const ch = RD.ch, live = PL.ch && PL.book === RD.book && PL.ch.id === ch.id && audio.src;
+  const resume = !chapterDone(ch) && (posOf(ch.id)?.t || 0) > 5;
+  x.innerHTML = ch.pending ? `<span class="pill">${icon("wave")} Audio în curând</span>`
+    : live ? "" : `<button class="btn primary" id="rdPlay" style="max-width:280px;margin:0 auto">${icon("play", true)} ${resume ? "Ascultă de unde ai rămas" : "Ascultă capitolul"}</button>`;
+  const pb = $("#rdPlay"); if(pb) pb.onclick = async () => { PL.userScroll = 0; await playChapter(RD.book, ch.id); drawReaderAction(); };
+}
+function highlightsOf(bookId, chId){
+  return Object.entries(ST.hl || {}).filter(([k, v]) => v && v.book === bookId && (!chId || v.ch === chId) && ((BOOKS[bookId] || {}).chapters || {})[v.ch]).map(([k, v]) => ({k, ...v}));
+}
+function cueIndex(t){
+  let lo = 0, hi = RD.cues.length - 1; if(hi < 0 || t == null) return 0;
+  while(lo < hi){ const m = (lo + hi + 1) >> 1; if(RD.cues[m] <= t + .15) lo = m; else hi = m - 1; }
+  return lo;
+}
+const bmIndex = m => m.i ?? cueIndex(m.t);
+function paintMarks(){
+  if(!RD.spans.length) return;
+  for(const s of RD.spans) s.classList.remove("hl", "h2", "h3", "h4", "bm");
+  for(const h of highlightsOf(RD.book, RD.ch.id).sort((x, y) => (x.at || 0) - (y.at || 0)))
+    for(let i = h.a; i <= h.b; i++){ const s = RD.spans[i]; if(!s) break; s.classList.remove("h2", "h3", "h4"); s.classList.add("hl"); if(h.c > 1) s.classList.add("h" + h.c); }
+  for(const m of bookmarksOf(RD.book)) if(m.ch === RD.ch.id){ const s = RD.spans[bmIndex(m)]; if(s) s.classList.add("bm"); }
+}
+function scrollToSentence(i, flash){
+  const s = RD.spans[i]; if(!s) return;
+  window.scrollTo({top: scrollY + s.getBoundingClientRect().top - innerHeight * 0.3, behavior: "auto"});
+  if(flash){ s.classList.add("flash"); setTimeout(() => s.classList.remove("flash"), 1900); }
+}
+const spansText = (a, b) => RD.spans.slice(a, b + 1).map(s => s.textContent).join(" ");
+function selHighlights(){ const s = RD.sel; return s ? highlightsOf(RD.book, RD.ch.id).filter(h => h.a <= s.b && h.b >= s.a) : []; }
+function selBookmark(){ const s = RD.sel; return s ? bookmarksOf(RD.book).find(m => m.ch === RD.ch.id && bmIndex(m) >= s.a && bmIndex(m) <= s.b) : null; }
+function clearNativeSel(){ try{ const x = getSelection(); if(x && !x.isCollapsed) x.removeAllRanges(); }catch(e){} }
+function setSel(a, b, native){
+  RD.sel = a == null ? null : {a: Math.min(a, b), b: Math.max(a, b), native: !!native};
+  RD.spans.forEach(s => s.classList.remove("sel"));
+  if(RD.sel && !native) for(let i = RD.sel.a; i <= RD.sel.b; i++) RD.spans[i]?.classList.add("sel");
+  drawSelbar();
+}
+function drawSelbar(){
+  const bar = $("#selbar");
+  if(!RD.sel){ bar.classList.remove("on"); return; }
+  const s = RD.sel, hs = selHighlights(), bm = selBookmark();
+  const cur = hs.length === 1 && hs[0].a === s.a && hs[0].b === s.b ? hs[0].c : 0;
+  const canPlay = !RD.ch.pending && RD.cues[s.a] >= 0;
+  bar.innerHTML = HL.map((c, i) => `<button class="sw ${cur === i + 1 ? "on" : ""}" data-c="${i + 1}" style="--c:${c}" aria-label="Subliniază cu ${HL_NAMES[i]}"><i></i></button>`).join("")
+    + `<span class="sep"></span>`
+    + (hs.length ? `<button class="ab" data-a="del" aria-label="Șterge sublinierea">${icon("trash")}</button>` : "")
+    + `<button class="ab ${bm ? "on" : ""}" data-a="bm" aria-label="${bm ? "Scoate semnul de carte" : "Pune semn de carte"}">${icon("bookmark", !!bm)}</button>`
+    + (canPlay ? `<button class="ab" data-a="play" aria-label="Ascultă de aici">${icon("play", true)}</button>` : "")
+    + `<button class="ab" data-a="x" aria-label="Închide">${icon("x")}</button>`;
+  bar.classList.add("on");
+  bar.querySelectorAll("[data-c]").forEach(el => el.onclick = () => applyHighlight(+el.dataset.c));
+  bar.querySelectorAll("[data-a]").forEach(el => el.onclick = () => selAction(el.dataset.a));
+}
+function trimHighlights(hs, a, b){
+  for(const h of hs){
+    save(`hl/${h.k}`, null);
+    const base = {book: h.book, ch: h.ch, c: h.c, at: h.at};
+    if(h.a < a) save(`hl/${h.k}l`, {...base, a: h.a, b: a - 1, quote: spansText(h.a, a - 1).slice(0, 300)});
+    if(h.b > b) save(`hl/${h.k}r`, {...base, a: b + 1, b: h.b, quote: spansText(b + 1, h.b).slice(0, 300)});
+  }
+}
+function applyHighlight(c){
+  const {a, b} = RD.sel, hs = selHighlights();
+  const same = hs.length === 1 && hs[0].a === a && hs[0].b === b && hs[0].c === c;
+  trimHighlights(hs, a, b);
+  if(!same) save(`hl/h${Date.now().toString(36)}`, {book: RD.book, ch: RD.ch.id, a, b, c, at: Date.now(), quote: spansText(a, b).slice(0, 300)});
+  else toast("Sublinierea a fost ștearsă");
+  clearNativeSel(); setSel(null); paintMarks();
+}
+function selAction(act){
+  const s = RD.sel; if(!s) return;
+  if(act === "x"){ clearNativeSel(); setSel(null); return; }
+  if(act === "del"){ trimHighlights(selHighlights(), s.a, s.b); toast("Sublinierea a fost ștearsă"); }
+  else if(act === "bm"){
+    const bm = selBookmark();
+    if(bm){ save(`bm/${bm.k}`, null); toast("Semn de carte scos"); }
+    else { const t = RD.cues[s.a];
+      save(`bm/b${Date.now().toString(36)}`, {book: RD.book, ch: RD.ch.id, i: s.a, ...(t >= 0 ? {t: Math.round(t * 10) / 10} : {}), at: Date.now(), quote: RD.texts[s.a].slice(0, 200), note: ""});
+      toast("Semn de carte pus"); }
+  }
+  else if(act === "play"){
+    const t = RD.cues[s.a] + 0.01; clearNativeSel(); setSel(null); PL.userScroll = 0;
+    if(PL.ch && PL.book === RD.book && PL.ch.id === RD.ch.id && audio.src){ audio.currentTime = t; audio.play().catch(() => {}); highlight(true, true); }
+    else playChapter(RD.book, RD.ch.id, {t}).then(drawReaderAction);
+    return;
+  }
+  clearNativeSel(); setSel(null); paintMarks();
+}
+function onReaderTap(e){
+  const sp = e.target.closest("span[data-i]");
+  const x = getSelection(); if(x && !x.isCollapsed && String(x).trim()) return;   // a long-press selection is handled below
+  if(!sp){ if(RD.sel) setSel(null); return; }
+  const i = +sp.dataset.i;
+  if(RD.sel && !RD.sel.native && i >= RD.sel.a && i <= RD.sel.b){ setSel(null); return; }   // tap again to close
+  const h = highlightsOf(RD.book, RD.ch.id).find(h => i >= h.a && i <= h.b);
+  if(h) setSel(h.a, h.b); else setSel(i, i);
+}
+// long-press and drag the handles: the highlight covers the sentences you touched
+document.addEventListener("selectionchange", () => {
+  clearTimeout(RD.selT); RD.selT = setTimeout(() => {
+    if(!RD.shown || !RD.spans.length) return;
+    const x = getSelection(); if(!x || x.isCollapsed || !x.rangeCount || !String(x).trim()) return;
+    const r = x.getRangeAt(0), box = $("#rdText"); if(!box || !box.contains(r.commonAncestorContainer)) return;
+    let a = -1, b = -1;
+    RD.spans.forEach((s, i) => { if(r.intersectsNode(s)){ if(a < 0) a = i; b = i; } });
+    if(a >= 0) setSel(a, b, true);
+  }, 250);
+});
+["touchstart", "wheel"].forEach(ev => window.addEventListener(ev, e => {
+  if(RD.shown && !(e.target.closest && e.target.closest(".mini,#selbar,.sheet"))) PL.userScroll = Date.now(); }, {passive: true}));
+let rposT;
+window.addEventListener("scroll", () => {      // remember where you stopped reading
+  if(!RD.shown || !RD.spans.length) return;
+  clearTimeout(rposT); rposT = setTimeout(() => {
+    if(!RD.shown || !RD.spans.length) return;
+    let lo = 0, hi = RD.spans.length - 1;
+    while(lo < hi){ const m = (lo + hi) >> 1; if(RD.spans[m].getBoundingClientRect().bottom < 90) lo = m + 1; else hi = m; }
+    store.set(rposKey(RD.book, RD.ch.id), lo);
+  }, 700);
+}, {passive: true});
+function highlightRows(bookId){
+  const chs = chaptersOf(bookId), order = c => chs.findIndex(x => x.id === c);
+  return highlightsOf(bookId).sort((x, y) => order(x.ch) - order(y.ch) || x.a - y.a).map(h => {
+    const c = BOOKS[bookId].chapters[h.ch], q = h.quote || "";
+    return `<div class="bmrow"><span class="hlbar" style="background:${HL[h.c - 1]}"></span>
+      <button class="x" data-hgo="${esc(h.k)}" style="text-align:left"><b>${isDaily(bookId) ? esc(c.title) : `Cap. ${order(h.ch) + 1} · ${esc(c.title)}`}</b>
+      <span>„${esc(q.slice(0, 180))}${q.length > 180 ? "…" : ""}”</span></button>
+      <button class="del" data-hdel="${esc(h.k)}" aria-label="Șterge sublinierea">${icon("trash")}</button></div>`; }).join("");
+}
+function bindHighlights(bookId){
+  const box = $("#hlList"); if(!box) return;
+  box.querySelectorAll("[data-hgo]").forEach(el => el.onclick = () => { const h = (ST.hl || {})[el.dataset.hgo]; if(h) openReaderAt(bookId, h.ch, h.a); });
+  box.querySelectorAll("[data-hdel]").forEach(el => el.onclick = () => { save(`hl/${el.dataset.hdel}`, null); toast("Sublinierea a fost ștearsă"); render(); });
 }
 
 function viewHistory(){
@@ -1337,7 +1563,7 @@ function viewProfile(){
   </div>`;
   root.querySelectorAll(".seg").forEach(s => s.querySelectorAll("button").forEach(b => b.onclick = async () => {
     const k = s.dataset.k, v = +b.dataset.v; await save("prefs/" + k, v);
-    if(k === "speed") audio.playbackRate = v; if(k === "back" || k === "fwd") skipIcons(); if(k === "textSize") $("#reader").style.fontSize = v + "px";
+    if(k === "speed") audio.playbackRate = v; if(k === "back" || k === "fwd") skipIcons(); if(k === "textSize" && $("#rdText")) $("#rdText").style.fontSize = v + "px";
     viewProfile(); }));
   $("#autoNext").onclick = async () => { await save("prefs/autoNext", !prefs().autoNext); viewProfile(); };
   if(USER.admin) drawAdmin();
@@ -1494,6 +1720,8 @@ async function refreshAll(){
 function render(){
   if(!USER) return;
   const [ , tab = "home", arg, arg2] = (location.hash || "#/home").split("/");
+  document.body.classList.toggle("reading", tab === "read");
+  if(tab !== "read"){ RD.shown = false; RD.live = false; RD.sel = null; PL.spans = []; $("#selbar").classList.remove("on"); }
   document.querySelectorAll("nav.tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === tab || ((tab === "book" || tab === "daily" || tab === "read") && a.dataset.tab === "library")));
   if(tab === "library") viewLibrary(); else if(tab === "daily") viewDaily(); else if(tab === "book") viewBook(decodeURIComponent(arg || ""));
   else if(tab === "read") viewReader(decodeURIComponent(arg || ""), decodeURIComponent(arg2 || ""));
@@ -1513,7 +1741,7 @@ let shown = false;
 function showApp(){
   tabsEl.classList.remove("hidden");
   audio.playbackRate = prefs().speed; $("#speedV").textContent = fmtSpeed(prefs().speed);
-  if(!shown){ skipIcons(); renderSleep(); setTextMode(PL.textOn); $("#player").classList.remove("open"); }
+  if(!shown){ skipIcons(); renderSleep(); $("#player").classList.remove("open"); }
   render();
   // restore the mini player where you left off (paused), unless you closed it with X
   if(B.mode !== "cache" && ST.last && BOOKS[ST.last.book] && !PL.ch && !store.get("ab_mini_closed", false)){
