@@ -1,5 +1,7 @@
-/* Keeps the app shell available offline. Audio is streamed, not cached. */
-const CACHE = "sona-v9";
+/* Opens instantly: the app shell comes from the phone's cache and is refreshed in the
+   background (next start gets the new version; pull-to-refresh gets it right away).
+   Audio is streamed, not cached. */
+const CACHE = "sona-v10";
 const SHELL = ["./", "index.html", "manifest.json", "firebase-config.js", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {
@@ -8,7 +10,9 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const u = new URL(e.request.url);
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
-  // network first, so a new version shows up right away; fall back to cache offline
-  e.respondWith(fetch(e.request).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
-    .catch(() => caches.match(e.request).then(r => r || caches.match("index.html"))));
+  e.respondWith(caches.open(CACHE).then(async c => {
+    const hit = await c.match(e.request, {ignoreSearch: true});
+    const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => hit);
+    return hit || net;
+  }));
 });

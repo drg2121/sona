@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Sona">
 <link rel="manifest" href="manifest.json">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js" crossorigin>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>Sona</title>
@@ -130,6 +133,22 @@ nav.tabs a.on{color:var(--accent)}
 .pill{flex:none;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--bg2);color:var(--muted);height:fit-content}
 .pill.ok{color:var(--ok)} .pill.err{color:#e5484d}
 .field input,.sheet input[type=url]{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px;outline:none;color:var(--ink);font:inherit}
+.now{display:flex;gap:16px;overflow-x:auto;margin:2px -18px 4px;padding:6px 18px 12px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.now::-webkit-scrollbar{display:none}
+.nowc{flex:none;width:158px;scroll-snap-align:start;color:inherit;text-decoration:none;display:block}
+.nowc .cv{position:relative;display:block}
+.nowc .cover{width:158px;font-size:16px}
+.nowc .cover .cauth{display:none}
+.nowc .cover .ct{justify-content:center;gap:12%;padding-bottom:18%}
+.nowc .play{position:absolute;right:10px;bottom:10px;z-index:3;width:46px;height:46px;border-radius:50%;background:#fff;color:#1b1830;
+  display:grid;place-items:center;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+.nowc .play svg{width:22px;height:22px}
+.nowc .pbar{position:absolute;left:12px;right:66px;bottom:31px;z-index:3;height:4px;border-radius:4px;background:rgba(255,255,255,.4);overflow:hidden}
+.nowc .pbar i{display:block;height:100%;background:#fff}
+.nowc .k{font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-top:10px}
+.nowc .tt{font-weight:650;font-size:15px;line-height:1.25;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nowc .ts{font-size:13px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:2px}
 .shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
 .shelf::-webkit-scrollbar{display:none}
 .shelf .tile{width:118px;flex:none;scroll-snap-align:start}
@@ -299,11 +318,23 @@ nav.tabs a.on{color:var(--accent)}
   background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;z-index:80;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%)}
 .loading{display:grid;place-items:center;min-height:60vh;color:var(--muted)}
+.splash{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding-bottom:8vh}
+.sp-logo{width:96px;height:96px;border-radius:26px;background:#534AB7;display:flex;align-items:center;justify-content:center;gap:7px;
+  box-shadow:0 14px 34px rgba(83,74,183,.35);animation:sp-in .45s ease-out both}
+.sp-logo span{width:8px;border-radius:4px;background:#fff;animation:sp-bar 1s ease-in-out infinite}
+.sp-logo span:nth-child(1){height:16px;background:#CECBF6;animation-delay:0s}
+.sp-logo span:nth-child(2){height:34px;background:#EEEDFE;animation-delay:.12s}
+.sp-logo span:nth-child(3){height:56px;animation-delay:.24s}
+.sp-logo span:nth-child(4){height:36px;background:#EEEDFE;animation-delay:.36s}
+.sp-logo span:nth-child(5){height:18px;background:#CECBF6;animation-delay:.48s}
+.sp-name{font-weight:780;font-size:30px;letter-spacing:-.03em;color:var(--ink);animation:sp-in .6s .1s ease-out both}
+@keyframes sp-bar{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
+@keyframes sp-in{from{opacity:0;transform:translateY(8px) scale(.94)}to{opacity:1;transform:none}}
 @media (min-width:760px){ .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))} }
 </style>
 </head>
 <body>
-<main id="root"><div class="loading">Se încarcă…</div></main>
+<main id="root"><div class="splash"><div class="sp-logo"><span></span><span></span><span></span><span></span><span></span></div><div class="sp-name">Sona</div></div></main>
 
 <div class="mini hidden" id="mini">
   <div class="cover" id="miniCover"></div>
@@ -512,7 +543,7 @@ function resumePoint(id){
   const first = chs.find(c => !chapterDone(c));
   return first ? {ch: first, t: 0} : {ch: chs[0], t: 0};
 }
-async function save(path, value){ setPath(ST, path, value); try{ await B.write(path, value); }catch(e){ console.warn("save", path, e); } }
+async function save(path, value){ setPath(ST, path, value); saveCache(); try{ await B.write(path, value); }catch(e){ console.warn("save", path, e); } }
 
 /* =====================================================================
    Covers
@@ -659,7 +690,7 @@ function renderPlayState(){
   $("#pPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#fPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#pPlay").setAttribute("aria-label", playing ? "Pauză" : "Redă");
-  if($("#contPlay") && (location.hash || "#/home").startsWith("#/home")) render();
+  if($(".nowc") && (location.hash || "#/home").startsWith("#/home")) render();
   const bp = $("#bPlay"); if(bp && location.hash.startsWith("#/book/") && decodeURIComponent(location.hash.slice(7)) === PL.book) render();
   try{ navigator.mediaSession.playbackState = playing ? "playing" : "paused"; }catch(e){}
 }
@@ -825,47 +856,40 @@ function bindDaily(){
 
 function viewHome(){
   const ids = bookIds();
-  if(!ids.length){
-    root.innerHTML = `<div class="view">${appbar()}${dailyCard()}<div class="empty" style="margin-top:16px">Biblioteca e goală. Cărțile apar aici după ce le publici din Studio.</div></div>`;
-    bindDaily(); return;
-  }
-  const lastOk = ST.last && BOOKS[ST.last.book] && !isDaily(ST.last.book) && bookProgress(ST.last.book).pct < .995;
   const regular = ids.filter(id => !isDaily(id));
-  const hero = lastOk ? ST.last.book : (regular.find(id => { const q = bookProgress(id); return q.started && q.pct < .995; }) || regular[0] || null);
-  if(!hero){
-    root.innerHTML = `<div class="view">${appbar()}${dailyCard()}<h2 class="sec">Din bibliotecă</h2><div class="shelf">${ids.map(tile).join("")}</div></div>`;
-    bindDaily(); return;
+  const lastOk = ST.last && BOOKS[ST.last.book] && !isDaily(ST.last.book) && bookProgress(ST.last.book).pct < .995;
+  const hero = lastOk ? ST.last.book : (regular.find(id => (q => q.started && q.pct < .995)(bookProgress(id))) || regular[0] || null);
+  const today = dailyToday();
+  const cards = [];
+  if(today) cards.push({book: today.book, ch: today.ch, k: "Textul zilei", tt: today.ch.title.replace(/^[^,]+,\s*/, "Azi, "),
+    ts: "Să examinăm Scripturile", pct: 0});
+  const inProgress = regular.filter(id => id !== hero && (q => q.started && q.pct < .995)(bookProgress(id)));
+  for(const id of [hero, ...inProgress].filter(Boolean)){
+    const p = bookProgress(id), r = resumePoint(id), chs = chaptersOf(id), n = chs.findIndex(c => c.id === r.ch.id) + 1;
+    cards.push({book: id, ch: r.ch, t: r.t, k: p.started ? `Continuă · cap. ${n}` : "Începe", tt: BOOKS[id].title,
+      ts: p.started ? `rămas ${fmtDur(p.left)}` : `${chs.length} capitole · ${fmtDur(p.total)}`, pct: p.started ? p.pct : 0});
   }
-  const b = BOOKS[hero], p = bookProgress(hero), r = resumePoint(hero), chs = chaptersOf(hero);
-  const idx = Math.max(0, chs.findIndex(c => c.id === r.ch.id));
-  const next = chs.slice(idx, idx + 4);
-  const others = ids.filter(id => id !== hero);
-  const inProgress = others.filter(id => !isDaily(id) && (q => q.started && q.pct < .995)(bookProgress(id)));
-  const favs = others.filter(id => (ST.fav||{})[id] && !inProgress.includes(id));
-  const rest = others.filter(id => !inProgress.includes(id) && !favs.includes(id));
-  const playing = PL.book === hero && !audio.paused;
-  const link = `#/book/${encodeURIComponent(hero)}`;
+  const shownIds = new Set(cards.map(c => c.book));
+  const rest = ids.filter(id => !shownIds.has(id));
+  let next = [];
+  if(hero){ const chs = chaptersOf(hero), r = resumePoint(hero), i = Math.max(0, chs.findIndex(c => c.id === r.ch.id)); next = chs.slice(i, i + 4).map(c => [c, chs.indexOf(c)]); }
   root.innerHTML = `<div class="view">${appbar()}
-    ${dailyCard()}
-    <section class="hero" style="--h:${b.hue ?? hueOf(b.title)}">
-      <a href="${link}" aria-label="Deschide cartea">${coverHTML(hero)}</a>
-      <div class="hero-meta">
-        <div class="k">${p.started ? "Continuă" : "Începe"}</div>
-        <a class="t" href="${link}">${esc(b.title)}</a>
-        ${b.author ? `<div class="c">${esc(b.author)}</div>` : ""}
-        ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="c2">rămas ${fmtDur(p.left)}</div>`
-                    : `<div class="c2">${chs.length} ${chs.length === 1 ? "capitol" : "capitole"} · ${fmtDur(p.total)}</div>`}
-      </div>
-      <button class="playbig" id="contPlay" aria-label="${playing ? "Pauză" : "Redă"}">${icon(playing ? "pause" : "play", true)}</button>
-    </section>
-    ${next.length ? `<h2 class="sec">${p.started ? "Urmează" : "Capitole"} <a href="${link}">Toate</a></h2><div class="chs">${next.map(c => chapterRow(c, chs.indexOf(c))).join("")}</div>` : ""}
-    ${inProgress.length ? `<h2 class="sec">În curs</h2><div class="shelf">${inProgress.map(tile).join("")}</div>` : ""}
-    ${favs.length ? `<h2 class="sec">Favorite</h2><div class="shelf">${favs.map(tile).join("")}</div>` : ""}
-    ${rest.length ? `<h2 class="sec">Din bibliotecă <a href="#/library">Toate</a></h2><div class="shelf">${rest.slice(0, 10).map(tile).join("")}</div>` : ""}
+    ${cards.length ? `<h2 class="sec" style="margin-top:12px">Acum</h2>
+    <div class="now">${cards.map((c, i) => { const playing = PL.ch && PL.ch.id === c.ch.id && !audio.paused;
+      return `<div class="nowc"><a class="cv" href="#/book/${encodeURIComponent(c.book)}">${coverHTML(c.book)}
+        ${c.pct ? `<span class="pbar"><i style="width:${c.pct*100}%"></i></span>` : ""}
+        <button class="play" data-i="${i}" aria-label="${playing ? "Pauză" : "Redă"}">${icon(playing ? "pause" : "play", true)}</button></a>
+        <div class="k">${esc(c.k)}</div><div class="tt">${esc(c.tt)}</div><div class="ts">${esc(c.ts)}</div></div>`; }).join("")}</div>`
+      : `<div class="empty" style="margin-top:16px">Biblioteca e goală. Cărțile apar aici după ce le publici din Studio.</div>`}
+    ${next.length ? `<h2 class="sec">Urmează <a href="#/book/${encodeURIComponent(hero)}">Toate</a></h2>
+      <div class="chs">${next.map(([c, i]) => chapterRow(c, i)).join("")}</div>` : ""}
+    ${rest.length ? `<h2 class="sec">Biblioteca ta <a href="#/library">Toate</a></h2><div class="shelf">${rest.slice(0, 10).map(tile).join("")}</div>` : ""}
   </div>`;
-  bindDaily();
-  $("#contPlay").onclick = () => { if(PL.book === hero && audio.src && PL.ch && PL.ch.id === r.ch.id){ togglePlay(); return; } playChapter(hero, r.ch.id, {t: r.t}); };
-  root.querySelectorAll("[data-c]").forEach(el => el.onclick = () => playChapter(hero, el.dataset.c, {open: true}));
+  root.querySelectorAll(".nowc .play").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation();
+    const c = cards[+b.dataset.i];
+    if(PL.ch && PL.ch.id === c.ch.id && audio.src){ togglePlay(); return; }
+    playChapter(c.book, c.ch.id, {t: isDaily(c.book) ? (chapterDone(c.ch) ? 0 : null) : c.t}); });
+  if(hero) root.querySelectorAll(".chs [data-c]").forEach(el => el.onclick = () => playChapter(hero, el.dataset.c, {open: true}));
 }
 
 let dailyMonth = null;
@@ -1074,7 +1098,9 @@ function authErr(e){
 
 /* pull down at the top of a page to refresh */
 async function refreshAll(){
-  if(audio.paused){ persist(true); await sleep(250); location.reload(); return; }   // full refresh, picks up a new app version too
+  if(audio.paused){ persist(true);
+    try{ const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }catch(e){}
+    await sleep(250); location.reload(); return; }   // full refresh, picks up a new app version too
   try{ const [b, s] = await Promise.all([B.books(), B.state()]); BOOKS = b || {}; ST = s || {}; render(); toast("Actualizat"); }
   catch(e){ toast("Nu s-a putut actualiza. Verifică internetul."); }
 }
@@ -1119,11 +1145,26 @@ tabsEl.querySelector('[data-tab="library"]').innerHTML = icon("lib") + "Bibliote
 tabsEl.querySelector('[data-tab="history"]').innerHTML = icon("hist") + "Istoric";
 tabsEl.querySelector('[data-tab="profile"]').innerHTML = icon("user") + "Profil";
 
+const SPLASH = `<div class="splash"><div class="sp-logo"><span></span><span></span><span></span><span></span><span></span></div><div class="sp-name">Sona</div></div>`;
+let cacheT;
+function saveCache(){ clearTimeout(cacheT); cacheT = setTimeout(() => { if(USER && B && B.mode !== "local") store.set("ab_cache_" + USER.uid, {books: BOOKS, st: ST, at: Date.now()}); }, 1500); }
+let shown = false;
+function showApp(){
+  tabsEl.classList.remove("hidden");
+  audio.playbackRate = prefs().speed; $("#speedV").textContent = fmtSpeed(prefs().speed);
+  if(!shown){ skipIcons(); renderSleep(); setTextMode(PL.textOn); $("#player").classList.remove("open"); }
+  render();
+  // restore the mini player where you left off (paused)
+  if(ST.last && BOOKS[ST.last.book] && !PL.ch){ const r = resumePoint(ST.last.book); if(r) playChapter(ST.last.book, r.ch.id, {t: r.t, autoplay: false}); }
+  shown = true;
+}
 async function onUser(u){
-  USER = u;
-  if(!u){ viewLogin(); return; }
-  root.innerHTML = `<div class="loading">Se încarcă biblioteca…</div>`;
-  try{ [BOOKS, ST] = await Promise.all([B.books(), B.state()]); }
+  if(!u){ USER = null; store.set("ab_last_user", null); shown = false; viewLogin(); return; }
+  const warm = shown && USER && USER.uid === u.uid;
+  USER = Object.assign({}, u, {admin: warm ? USER.admin : false});
+  if(!warm) root.innerHTML = SPLASH;
+  let adm = false;
+  try{ [BOOKS, ST, adm] = await Promise.all([B.books(), B.state(), B.isAdmin ? B.isAdmin().catch(() => false) : false]); }
   catch(e){
     if(B.claimAdminIfNone && !onUser.claimed){ onUser.claimed = true;
       try{ if(await B.claimAdminIfNone()) return onUser(u); }catch(err){} }
@@ -1136,14 +1177,10 @@ async function onUser(u){
     $("#again").onclick = () => onUser(u);
     $("#lo").onclick = async ev => { ev.preventDefault(); await B.signOut(); location.reload(); }; return;
   }
-  USER.admin = B.isAdmin ? await B.isAdmin().catch(() => false) : false;
+  USER.admin = !!adm;
   BOOKS = BOOKS || {}; ST = ST || {};
-  tabsEl.classList.remove("hidden");
-  audio.playbackRate = prefs().speed; $("#speedV").textContent = fmtSpeed(prefs().speed);
-  skipIcons(); renderSleep(); setTextMode(PL.textOn); $("#player").classList.remove("open");
-  render();
-  // restore the mini player where you left off (paused)
-  if(ST.last && BOOKS[ST.last.book] && !PL.ch){ const r = resumePoint(ST.last.book); if(r) playChapter(ST.last.book, r.ch.id, {t: r.t, autoplay: false}); }
+  if(B.mode !== "local"){ store.set("ab_last_user", {uid: u.uid, name: u.name, email: u.email, admin: USER.admin}); saveCache(); }
+  showApp();
 }
 
 (async function start(){
@@ -1155,6 +1192,10 @@ async function onUser(u){
       <p class="sub">Nu s-au putut încărca setările. Deschide adresa <b>drg2121.github.io/sona</b> și verifică internetul.</p>
       <a class="btn primary" href="https://drg2121.github.io/sona/" style="text-decoration:none">Deschide Sona</a></div>`;
     return;
+  }
+  if(!LOCAL){
+    const lu = store.get("ab_last_user", null), cache = lu && store.get("ab_cache_" + lu.uid, null);
+    if(lu && cache && cache.books){ USER = lu; BOOKS = cache.books; ST = cache.st || {}; B = {mode: "cache", write: async () => {}, addHistory: async () => null, addListened: async () => {}}; showApp(); }
   }
   B = LOCAL ? LocalBackend() : await FirebaseBackend(cfg);
   B.init(onUser);
