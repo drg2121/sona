@@ -1,5 +1,5 @@
 /* Keeps the app shell available offline. Audio is streamed, not cached. */
-const CACHE = "carti-audio-v1";
+const CACHE = "sona-v2";
 const SHELL = ["./", "index.html", "manifest.json", "firebase-config.js", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

@@ -3,26 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#14110e">
+<meta name="theme-color" content="#110f1c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Cărți audio">
+<meta name="apple-mobile-web-app-title" content="Sona">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Cărți audio</title>
+<title>Sona</title>
 <style>
 :root{
-  --bg:#14110e; --bg2:#1c1814; --card:#231f1a; --card2:#2b261f; --ink:#f5eee4; --muted:#a99e8e; --faint:#6f665a;
-  --line:#352e26; --accent:#ff8d4f; --accent-ink:#1a0f08; --ok:#62c48f; --shadow:0 10px 30px rgba(0,0,0,.45);
+  --bg:#110f1c; --bg2:#181528; --card:#1f1b33; --card2:#29243f; --ink:#f3f1fc; --muted:#a8a3c6; --faint:#6f6a92;
+  --line:#2f2a4a; --accent:#9d95ff; --accent-ink:#13102a; --brand:#534AB7; --ok:#62c48f; --shadow:0 10px 30px rgba(5,3,20,.55);
   --serif:"New York","Iowan Old Style",Charter,Georgia,"Times New Roman",serif;
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --nav-h:62px; --mini-h:64px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
 }
 @media (prefers-color-scheme: light){
-  :root{ --bg:#f7f2ea; --bg2:#efe7da; --card:#fffdf9; --card2:#f3ece1; --ink:#1f1b16; --muted:#6b6257; --faint:#a59a8a;
-    --line:#e4dccd; --accent:#d4561f; --accent-ink:#fff; --ok:#2f7d4f; --shadow:0 10px 30px rgba(60,40,20,.18); }
+  :root{ --bg:#f6f5fb; --bg2:#ecebf6; --card:#ffffff; --card2:#f0eefa; --ink:#1b1830; --muted:#625d7d; --faint:#a19cbb;
+    --line:#e3e0f1; --accent:#534AB7; --accent-ink:#fff; --brand:#534AB7; --ok:#2f7d4f; --shadow:0 10px 30px rgba(40,30,110,.14); }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
@@ -37,7 +37,8 @@ svg.i.fill{fill:currentColor;stroke:none}
 .view{max-width:720px;margin:0 auto;padding:calc(var(--safe-t) + 18px) 18px calc(var(--nav-h) + var(--mini-h) + var(--safe-b) + 24px)}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 .top h1{font:700 30px/1.1 var(--serif);margin:0;letter-spacing:-.01em}
-.hello{font-size:14px;color:var(--muted)}
+.hello{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.hello .mark{width:22px;height:22px;border-radius:6px}
 .avatar{text-decoration:none;width:38px;height:38px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-weight:700;color:var(--accent)}
 h2.sec{font:650 19px/1.2 var(--sans);margin:26px 0 12px;display:flex;justify-content:space-between;align-items:baseline}
 h2.sec a{font-size:14px;font-weight:600;color:var(--accent);text-decoration:none}
@@ -106,7 +107,7 @@ nav.tabs a.on{color:var(--accent)}
 .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:16px;font-weight:700;font-size:16px}
 .btn.primary{background:var(--accent);color:var(--accent-ink)}
 .btn.sq{flex:none;width:52px;background:var(--card)}
-.btn.sq.on{color:#ff5a6e}
+.btn.sq.on{color:#ff6b8a}
 .progline{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
 .chs{margin-top:20px;background:var(--card);border-radius:18px;overflow:hidden}
 .chrow{display:flex;gap:14px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);width:100%;text-align:left}
@@ -158,7 +159,7 @@ nav.tabs a.on{color:var(--accent)}
 .gbtn{width:100%;background:#fff;color:#1f1f1f;border:1px solid var(--line);gap:12px;margin-bottom:6px}
 .or{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:13px;margin:16px 0}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-.err{color:#ff7a6e;font-size:14px;min-height:20px;margin:4px 2px 6px}
+.err{color:#ff8a8a;font-size:14px;min-height:20px;margin:4px 2px 6px}
 
 /* ---------- mini player ---------- */
 .mini{position:fixed;left:8px;right:8px;bottom:calc(var(--nav-h) + var(--safe-b) + 6px);z-index:19;max-width:704px;margin:0 auto;
@@ -285,7 +286,7 @@ nav.tabs a.on{color:var(--accent)}
 <script src="firebase-config.js"></script>
 <script type="module">
 /* =====================================================================
-   Cărți audio — phone app. Data comes from Firebase (online) or from the
+   Sona — phone app. Data comes from Firebase (online) or from the
    Studio on the Mac (local mode, http://localhost:8765/app/).
    ===================================================================== */
 const $ = s => document.querySelector(s);
@@ -308,7 +309,7 @@ const P = {
   heart:'<path d="M12 20.5s-8-4.6-8-10.6A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 2.9c0 6-8 10.6-8 10.6z"/>',
   moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>', text:'<path d="M4 6h16M4 10h16M4 14h10M4 18h12"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
-  head:'<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/>',
+  wave:'<path d="M4 10.5v3M8 8v8M12 4.5v15M16 7.5v9M20 10.5v3"/>',
 };
 const icon = (n, fill) => `<svg class="i${fill?" fill":""}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
 
@@ -438,7 +439,7 @@ async function save(path, value){ setPath(ST, path, value); try{ await B.write(p
 function coverHTML(id, extraClass = "", badge = ""){
   const b = BOOKS[id] || {title: "?"};
   return `<div class="cover ${extraClass}" style="--h:${b.hue ?? hueOf(b.title)}">${badge}
-    <div class="ct"><div class="cmark">${icon("head")}</div><div class="ctitle">${esc(b.title)}</div><div class="cauth">${esc(b.author || (b.lang === "ro" ? "carte audio" : "audiobook"))}</div></div></div>`;
+    <div class="ct"><div class="cmark">${icon("wave")}</div><div class="ctitle">${esc(b.title)}</div><div class="cauth">${esc(b.author || (b.lang === "ro" ? "carte audio" : "audiobook"))}</div></div></div>`;
 }
 const artCache = {};
 function coverArt(id){
@@ -562,7 +563,7 @@ function updateNowPlaying(){
   $("#pLabel").textContent = `Capitolul ${idx} din ${PL.list.length}`;
   $("#favV").innerHTML = icon("heart", !!(ST.fav||{})[PL.book]); $("#tFav").classList.toggle("on", !!(ST.fav||{})[PL.book]);
   if("mediaSession" in navigator){
-    try{ navigator.mediaSession.metadata = new MediaMetadata({title: PL.ch.title, artist: b.title, album: `Capitolul ${idx} din ${PL.list.length}`,
+    try{ navigator.mediaSession.metadata = new MediaMetadata({title: PL.ch.title, artist: b.title, album: `Sona · capitolul ${idx} din ${PL.list.length}`,
       artwork: [{src: coverArt(PL.book), sizes: "512x512", type: "image/png"}]}); }catch(e){}
   }
   renderPlayState(); renderProgress();
@@ -693,7 +694,7 @@ function viewHome(){
       <div class="c">${esc(r.ch.title)} · rămas ${fmtDur(p.left)}</div><div class="bar"><i style="width:${p.pct*100}%"></i></div></div>
       <button class="playbig" id="contPlay" aria-label="Continuă">${icon(PL.book === last && !audio.paused ? "pause" : "play", true)}</button></div>`; }
   root.innerHTML = `<div class="view">
-    <div class="top"><div><div class="hello">${hi}, ${esc(USER.name)}</div><h1>Acasă</h1></div><a class="avatar" href="#/profile">${esc((USER.name||"?")[0].toUpperCase())}</a></div>
+    <div class="top"><div><div class="hello"><img class="mark" src="icon-192.png" alt="">Sona · ${hi}, ${esc(USER.name)}</div><h1>Acasă</h1></div><a class="avatar" href="#/profile">${esc((USER.name||"?")[0].toUpperCase())}</a></div>
     ${cont || (ids.length ? `<div class="note">Alege o carte și apasă ▶. Aplicația ține minte unde ai rămas, pe orice dispozitiv.</div>` : "")}
     ${inProgress.length ? `<h2 class="sec">În curs</h2><div class="shelf">${inProgress.map(tile).join("")}</div>` : ""}
     ${favs.length ? `<h2 class="sec">Favorite</h2><div class="shelf">${favs.map(tile).join("")}</div>` : ""}
@@ -736,7 +737,7 @@ function viewBook(id){
     <h2 class="sec">Capitole</h2>
     <div class="chs">${chs.map((c, i) => { const ps = posOf(c.id), done = chapterDone(c), cur = PL.ch && PL.ch.id === c.id;
       const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
-      return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("head") : i+1}</span>
+      return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("wave") : i+1}</span>
         <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
         ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`; }).join("")}</div></div>`;
   $("#bPlay").onclick = () => { if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
@@ -814,8 +815,8 @@ function viewLogin(){
   $("#tabs").classList.add("hidden"); $("#mini").classList.add("hidden");
   let mode = "in";
   const draw = () => {
-    root.innerHTML = `<div class="login"><img class="logo" src="icon-192.png" alt=""><h1>Cărți audio</h1>
-      <p class="sub">${B.mode === "local" ? "Mod local, pe acest Mac" : mode === "in" ? "Intră în contul tău" : "Creează-ți contul"}</p>
+    root.innerHTML = `<div class="login"><img class="logo" src="icon-192.png" alt=""><h1>Sona</h1>
+      <p class="sub">${B.mode === "local" ? "Mod local, pe acest Mac" : mode === "in" ? "Cărțile tale, citite cu voce" : "Creează-ți contul"}</p>
       ${B.mode === "local" ? "" : `<button class="btn gbtn" id="google" type="button"><svg viewBox="0 0 48 48" width="22" height="22" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continuă cu Google</button>
       <div class="or"><span>sau cu email</span></div>`}
       <form id="f">
