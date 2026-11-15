@@ -582,13 +582,14 @@ const PL = {book: null, ch: null, list: [], cues: [], spans: [], histId: null, h
 
 async function playChapter(bookId, chId, {t = null, autoplay = true, open = false} = {}){
   const list = chaptersOf(bookId); const ch = list.find(c => c.id === chId) || list[0]; if(!ch) return;
+  if(autoplay) store.set("ab_mini_closed", false);
   const same = PL.ch && PL.ch.id === ch.id && audio.src;
   PL.book = bookId; PL.list = list; PL.ch = ch; PL.histId = null;
   updateNowPlaying();
   if(open) openPlayer();
   if(!same){
     let url = PL.nextUrl && PL.nextUrl.id === ch.id ? PL.nextUrl.url : null;
-    try{ url = url || await B.audioUrl(bookId, ch); }catch(e){ toast("Nu pot încărca audio: " + (e.code || e.message)); return; }
+    try{ url = url || await B.audioUrl(bookId, ch); }catch(e){ console.warn("audio", e); toast("Nu pot porni redarea. Verifică internetul și încearcă din nou."); PL.ch = null; return; }
     audio.src = url;
     audio.playbackRate = prefs().speed;
     const start = t ?? (chapterDone(ch) ? 0 : (posOf(ch.id)?.t || 0));
@@ -756,7 +757,7 @@ setInterval(() => { if(PL.sleepAt) renderSleep(); }, 20000);
 
 $("#miniOpen").onclick = openPlayer; $("#miniCover").onclick = openPlayer;
 $("#miniClose").innerHTML = icon("x");
-$("#miniClose").onclick = () => { audio.pause(); persist(true); $("#mini").classList.add("hidden"); };
+$("#miniClose").onclick = () => { audio.pause(); persist(true); store.set("ab_mini_closed", true); $("#mini").classList.add("hidden"); };
 $("#fShow").innerHTML = icon("up"); $("#fShow").onclick = () => $("#player").classList.remove("immersive");
 $("#fPlay").onclick = togglePlay;
 (function immersiveOnScroll(){
@@ -1154,8 +1155,10 @@ function showApp(){
   audio.playbackRate = prefs().speed; $("#speedV").textContent = fmtSpeed(prefs().speed);
   if(!shown){ skipIcons(); renderSleep(); setTextMode(PL.textOn); $("#player").classList.remove("open"); }
   render();
-  // restore the mini player where you left off (paused)
-  if(ST.last && BOOKS[ST.last.book] && !PL.ch){ const r = resumePoint(ST.last.book); if(r) playChapter(ST.last.book, r.ch.id, {t: r.t, autoplay: false}); }
+  // restore the mini player where you left off (paused), unless you closed it with X
+  if(B.mode !== "cache" && ST.last && BOOKS[ST.last.book] && !PL.ch && !store.get("ab_mini_closed", false)){
+    const r = resumePoint(ST.last.book); if(r) playChapter(ST.last.book, r.ch.id, {t: r.t, autoplay: false});
+  }
   shown = true;
 }
 async function onUser(u){
@@ -1183,6 +1186,7 @@ async function onUser(u){
   showApp();
 }
 
+let resolveRealB; const REAL_B = new Promise(r => resolveRealB = r);
 (async function start(){
   setupMediaSession();
   const cfg = window.FB_CONFIG;
@@ -1195,9 +1199,15 @@ async function onUser(u){
   }
   if(!LOCAL){
     const lu = store.get("ab_last_user", null), cache = lu && store.get("ab_cache_" + lu.uid, null);
-    if(lu && cache && cache.books){ USER = lu; BOOKS = cache.books; ST = cache.st || {}; B = {mode: "cache", write: async () => {}, addHistory: async () => null, addListened: async () => {}}; showApp(); }
+    if(lu && cache && cache.books){
+      USER = lu; BOOKS = cache.books; ST = cache.st || {};
+      // until Firebase is ready, every call waits for it instead of failing
+      B = new Proxy({}, {get: (t, k) => k === "mode" ? "cache" : async (...args) => { const real = await REAL_B; return typeof real[k] === "function" ? real[k](...args) : real[k]; }});
+      showApp();
+    }
   }
-  B = LOCAL ? LocalBackend() : await FirebaseBackend(cfg);
+  const realB = LOCAL ? LocalBackend() : await FirebaseBackend(cfg);
+  B = realB; resolveRealB(realB);
   B.init(onUser);
   if("serviceWorker" in navigator && isSecureContext && !LOCAL) navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
