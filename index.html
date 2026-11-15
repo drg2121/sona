@@ -98,6 +98,35 @@ nav.tabs a.on{color:var(--accent)}
 .hero .bar{background:rgba(255,255,255,.22);margin-top:10px}
 .hero .bar i{background:#fff}
 .hero .playbig{background:#fff;color:hsl(var(--h) 45% 30%);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.daily{display:flex;gap:14px;align-items:center;padding:14px 14px 14px 16px;border-radius:20px;background:var(--card);
+  box-shadow:var(--shadow);text-decoration:none;color:inherit;margin:6px 0 14px;border:1px solid var(--line)}
+.daily .ic{width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(140deg,#e2a23a,#b8641a)}
+.daily .ic svg{width:24px;height:24px}
+.daily .x{flex:1;min-width:0}
+.daily .k{font-size:12px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:#c27a1c}
+.daily .dt{font-weight:650;font-size:15px;margin-top:1px}
+.daily .ds{font:15px/1.35 var(--serif);color:var(--muted);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.daily .pp{width:46px;height:46px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.daily .pp svg{width:22px;height:22px}
+.dayrow{display:flex;gap:14px;align-items:center;width:100%;text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dayrow:last-child{border-bottom:0}
+.dayrow .dn{width:40px;flex:none;text-align:center}
+.dayrow .dn b{display:block;font:700 20px/1 var(--serif)}
+.dayrow .dn small{font-size:11px;color:var(--muted);text-transform:uppercase}
+.dayrow .x{flex:1;min-width:0}
+.dayrow .x span{display:block;font:15px/1.35 var(--serif);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dayrow .x b{font-weight:600;font-size:14px}
+.dayrow.today{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.dayrow.today .dn b{color:var(--accent)}
+.addbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:14px}
+.addbtn svg{width:18px;height:18px}
+.req{display:flex;justify-content:space-between;gap:10px;padding:12px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.req:last-child{border-bottom:0}
+.req small{color:var(--muted);display:block}
+.pill{flex:none;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--bg2);color:var(--muted);height:fit-content}
+.pill.ok{color:var(--ok)} .pill.err{color:#e5484d}
+.field input,.sheet input[type=url]{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px;outline:none;color:var(--ink);font:inherit}
 .shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
 .shelf::-webkit-scrollbar{display:none}
 .shelf .tile{width:118px;flex:none;scroll-snap-align:start}
@@ -338,6 +367,8 @@ const P = {
   heart:'<path d="M12 20.5s-8-4.6-8-10.6A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 2.9c0 6-8 10.6-8 10.6z"/>',
   moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>', text:'<path d="M4 6h16M4 10h16M4 14h10M4 18h12"/>',
   refresh:'<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   wave:'<path d="M4 10.5v3M8 8v8M12 4.5v15M16 7.5v9M20 10.5v3"/>',
 };
@@ -427,6 +458,8 @@ async function FirebaseBackend(cfg){
       await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async deny(uid){ await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async revoke(uid){ await D.set(D.ref(db, `ab/allowed/${uid}`), null); },
+    async addBook(url, whole){ const r = D.push(D.ref(db, "ab/inbox")); await D.set(r, {url, whole: !!whole, status: "nou", at: Date.now(), by: me().uid}); },
+    async bookRequests(){ return (await val("ab/inbox")) || {}; },
   };
 }
 
@@ -559,12 +592,12 @@ audio.addEventListener("ended", () => {
   persist(true);
   if(PL.sleepEnd){ PL.sleepEnd = false; renderSleep(); toast("Somn: sfârșit de capitol"); return; }
   const i = PL.list.findIndex(c => c.id === PL.ch.id), nx = PL.list[i+1];
-  if(nx && prefs().autoNext){
+  if(nx && prefs().autoNext && !isDaily(PL.book)){
     // switch source right away (prefetched URL) so playback continues with the screen locked
     if(PL.nextUrl && PL.nextUrl.id === nx.id){ PL.ch = nx; audio.src = PL.nextUrl.url; audio.playbackRate = prefs().speed; audio.play().catch(()=>{});
       PL.histId = null; updateNowPlaying(); loadTranscript(); prefetchNext(); save("last", {book: PL.book, ch: nx.id, at: Date.now()}); }
     else playChapter(PL.book, nx.id, {t: 0});
-  } else if(!nx){ toast("Ai terminat cartea 🎉"); render(); }
+  } else if(!nx && !isDaily(PL.book)){ toast("Ai terminat cartea 🎉"); render(); }
 });
 audio.addEventListener("ratechange", () => { $("#speedV").textContent = fmtSpeed(audio.playbackRate); mediaPos(); });
 audio.addEventListener("loadedmetadata", mediaPos);
@@ -590,10 +623,10 @@ function updateNowPlaying(){
   $("#pCover").outerHTML = coverHTML(PL.book, "pcover").replace('class="cover ', 'id="pCover" class="cover ');
   $("#pBlur").style.background = `hsl(${b.hue ?? hueOf(b.title)} 50% 30%)`;
   $("#pTitle").textContent = PL.ch.title; $("#pSub").textContent = b.title;
-  $("#pLabel").textContent = `Capitolul ${idx} din ${PL.list.length}`;
+  $("#pLabel").textContent = isDaily(PL.book) ? "Textul zilei" : `Capitolul ${idx} din ${PL.list.length}`;
   $("#favV").innerHTML = icon("heart", !!(ST.fav||{})[PL.book]); $("#tFav").classList.toggle("on", !!(ST.fav||{})[PL.book]);
   if("mediaSession" in navigator){
-    try{ navigator.mediaSession.metadata = new MediaMetadata({title: PL.ch.title, artist: b.title, album: `Sona · capitolul ${idx} din ${PL.list.length}`,
+    try{ navigator.mediaSession.metadata = new MediaMetadata({title: PL.ch.title, artist: isDaily(PL.book) ? "Textul zilei" : b.title, album: isDaily(PL.book) ? "Sona" : `Sona · capitolul ${idx} din ${PL.list.length}`,
       artwork: [{src: coverArt(PL.book), sizes: "512x512", type: "image/png"}]}); }catch(e){}
   }
   renderPlayState(); renderProgress();
@@ -615,7 +648,7 @@ function renderProgress(){
   $("#tCur").textContent = fmtClock(seeking ? $("#seek").value/1000*d : t);
   $("#tLeft").textContent = "-" + fmtClock(d - (seeking ? $("#seek").value/1000*d : t));
   $("#miniProg").style.width = (d ? t/d*100 : 0) + "%";
-  if(PL.ch && Math.floor(t) % 5 === 0){
+  if(PL.ch && !isDaily(PL.book) && Math.floor(t) % 5 === 0){
     const i = PL.list.findIndex(c => c.id === PL.ch.id);
     const left = Math.max(0, d - t) + PL.list.slice(i + 1).reduce((s, c) => s + (c.dur || 0), 0);
     $("#pLabel").textContent = `Capitolul ${i + 1} din ${PL.list.length} · ${fmtDur(left)} rămase din carte`;
@@ -729,15 +762,36 @@ function chapterRow(c, i){
     <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
     ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`;
 }
-function bookIds(){ return Object.keys(BOOKS).sort((a, b) => (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
+function bookIds(){ return Object.keys(BOOKS).filter(id => BOOKS[id].kind !== "daily").sort((a, b) => (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
+const isDaily = id => !!(BOOKS[id] && BOOKS[id].kind === "daily");
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+function dailyDays(){
+  const out = [];
+  for(const id of Object.keys(BOOKS)) if(isDaily(id)) for(const c of chaptersOf(id)) if(c.date) out.push({book: id, ch: c});
+  return out.sort((x, y) => x.ch.date.localeCompare(y.ch.date));
+}
+function dailyToday(){ const t = todayISO(), all = dailyDays(); return all.find(d => d.ch.date === t) || all.find(d => d.ch.date > t) || null; }
+function dailyCard(){
+  const d = dailyToday(); if(!d) return "";
+  const playing = PL.ch && PL.ch.id === d.ch.id && !audio.paused;
+  return `<a class="daily" href="#/daily"><div class="ic">${icon("sun")}</div>
+    <div class="x"><div class="k">Textul zilei</div><div class="dt">${esc(d.ch.title)}</div>${d.ch.sub ? `<div class="ds">${esc(d.ch.sub)}</div>` : ""}</div>
+    <button class="pp" id="dailyPlay" data-b="${esc(d.book)}" data-c="${esc(d.ch.id)}" aria-label="Ascultă textul zilei">${icon(playing ? "pause" : "play", true)}</button></a>`;
+}
+function bindDaily(){
+  const b = $("#dailyPlay"); if(!b) return;
+  b.onclick = e => { e.preventDefault(); e.stopPropagation();
+    if(PL.ch && PL.ch.id === b.dataset.c && audio.src){ togglePlay(); return; }
+    playChapter(b.dataset.b, b.dataset.c, {t: chapterDone({id: b.dataset.c}) ? 0 : null}); };
+}
 
 function viewHome(){
   const ids = bookIds();
   if(!ids.length){
-    root.innerHTML = `<div class="view">${appbar()}<div class="empty" style="margin-top:16px">Biblioteca e goală. Cărțile apar aici după ce le publici din Studio.</div></div>`;
-    return;
+    root.innerHTML = `<div class="view">${appbar()}${dailyCard()}<div class="empty" style="margin-top:16px">Biblioteca e goală. Cărțile apar aici după ce le publici din Studio.</div></div>`;
+    bindDaily(); return;
   }
-  const lastOk = ST.last && BOOKS[ST.last.book] && bookProgress(ST.last.book).pct < .995;
+  const lastOk = ST.last && BOOKS[ST.last.book] && !isDaily(ST.last.book) && bookProgress(ST.last.book).pct < .995;
   const hero = lastOk ? ST.last.book : (ids.find(id => { const q = bookProgress(id); return q.started && q.pct < .995; }) || ids[0]);
   const b = BOOKS[hero], p = bookProgress(hero), r = resumePoint(hero), chs = chaptersOf(hero);
   const idx = Math.max(0, chs.findIndex(c => c.id === r.ch.id));
@@ -749,6 +803,7 @@ function viewHome(){
   const playing = PL.book === hero && !audio.paused;
   const link = `#/book/${encodeURIComponent(hero)}`;
   root.innerHTML = `<div class="view">${appbar()}
+    ${dailyCard()}
     <section class="hero" style="--h:${b.hue ?? hueOf(b.title)}">
       <a href="${link}" aria-label="Deschide cartea">${coverHTML(hero)}</a>
       <div class="hero-meta">
@@ -765,14 +820,40 @@ function viewHome(){
     ${favs.length ? `<h2 class="sec">Favorite</h2><div class="shelf">${favs.map(tile).join("")}</div>` : ""}
     ${rest.length ? `<h2 class="sec">Din bibliotecă <a href="#/library">Toate</a></h2><div class="shelf">${rest.slice(0, 10).map(tile).join("")}</div>` : ""}
   </div>`;
+  bindDaily();
   $("#contPlay").onclick = () => { if(PL.book === hero && audio.src && PL.ch && PL.ch.id === r.ch.id){ togglePlay(); return; } playChapter(hero, r.ch.id, {t: r.t}); };
   root.querySelectorAll("[data-c]").forEach(el => el.onclick = () => playChapter(hero, el.dataset.c, {open: true}));
+}
+
+let dailyMonth = null;
+function viewDaily(){
+  const all = dailyDays(), t = todayISO();
+  if(!all.length){ root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Textul zilei</h1><div class="empty">Încă nu e publicat. Studio de pe Mac îl pregătește automat.</div></div>`; return; }
+  const months = [...new Set(all.map(d => d.ch.date.slice(0, 7)))];
+  if(!dailyMonth || !months.includes(dailyMonth)) dailyMonth = months.includes(t.slice(0, 7)) ? t.slice(0, 7) : months[0];
+  const mName = ym => { const [y, m] = ym.split("-").map(Number); const s = new Date(y, m - 1, 1).toLocaleDateString("ro-RO", {month: "short"}).replace(".", "");
+    return s.charAt(0).toUpperCase() + s.slice(1) + (y !== new Date().getFullYear() ? " " + y : ""); };
+  const days = all.filter(d => d.ch.date.startsWith(dailyMonth));
+  root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Textul zilei</h1>
+    ${dailyCard()}
+    <div class="chips">${months.map(m => `<button class="chip ${m === dailyMonth ? "on" : ""}" data-m="${m}">${mName(m)}</button>`).join("")}</div>
+    <div class="chs">${days.map(d => { const dt = new Date(d.ch.date + "T12:00:00"), done = chapterDone(d.ch);
+      return `<button class="dayrow ${d.ch.date === t ? "today" : ""}" data-b="${esc(d.book)}" data-c="${esc(d.ch.id)}">
+        <span class="dn"><b>${dt.getDate()}</b><small>${dt.toLocaleDateString("ro-RO", {weekday: "short"}).replace(".", "")}</small></span>
+        <span class="x"><b>${d.ch.date === t ? "Azi" : esc(d.ch.title)}</b><span>${esc(d.ch.sub || "")}</span></span>
+        ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`; }).join("")}</div></div>`;
+  bindDaily();
+  root.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { dailyMonth = b.dataset.m; viewDaily(); });
+  root.querySelectorAll(".dayrow").forEach(el => el.onclick = () => playChapter(el.dataset.b, el.dataset.c, {open: true, t: chapterDone({id: el.dataset.c}) ? 0 : null}));
+  const td = root.querySelector(".dayrow.today"); if(td) td.scrollIntoView({block: "center"});
 }
 
 let libFilter = "all", libQuery = "";
 function viewLibrary(){
   const f = [["all","Toate"],["prog","În curs"],["fav","Favorite"],["done","Terminate"],["new","Neîncepute"]];
-  root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Bibliotecă</h1>
+  root.innerHTML = `<div class="view">${appbar()}<div style="display:flex;justify-content:space-between;align-items:center"><h1 class="big">Bibliotecă</h1>
+      ${USER.admin && B.addBook ? `<button class="addbtn" id="addBook">${icon("plus")}Adaugă</button>` : ""}</div>
+    ${dailyDays().length ? `<a class="daily" href="#/daily" style="margin-top:0"><div class="ic">${icon("sun")}</div><div class="x"><div class="k">Textul zilei</div><div class="dt">Toate zilele, pe luni</div></div><span style="color:var(--faint)">›</span></a>` : ""}
     <label class="search">${icon("search")}<input id="q" type="search" placeholder="Caută o carte" value="${esc(libQuery)}"></label>
     <div class="chips">${f.map(([k, l]) => `<button class="chip ${libFilter === k ? "on" : ""}" data-f="${k}">${l}</button>`).join("")}</div>
     <div id="libGrid"></div></div>`;
@@ -785,6 +866,7 @@ function viewLibrary(){
   };
   root.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { libFilter = b.dataset.f; viewLibrary(); });
   $("#q").addEventListener("input", e => { libQuery = e.target.value; draw(); });
+  const ab = $("#addBook"); if(ab) ab.onclick = addBookSheet;
   draw();
 }
 
@@ -856,6 +938,28 @@ function viewProfile(){
   $("#autoNext").onclick = async () => { await save("prefs/autoNext", !prefs().autoNext); viewProfile(); };
   if(USER.admin) drawAdmin();
   $("#logout").onclick = async () => { if(!confirm("Ieși din cont?")) return; audio.pause(); persist(true); await B.signOut(); location.hash = "#/home"; location.reload(); };
+}
+
+async function addBookSheet(){
+  const draw = async () => {
+    let reqs = {}; try{ reqs = await B.bookRequests(); }catch(e){}
+    const list = Object.entries(reqs || {}).sort((x, y) => (y[1].at||0) - (x[1].at||0)).slice(0, 8);
+    const st = {nou: ["așteaptă Mac-ul", ""], lucru: ["se generează", ""], gata: ["gata", "ok"], eroare: ["eroare", "err"]};
+    $("#sheetBody").innerHTML = `<h3>Adaugă o carte</h3>
+      <p style="color:var(--muted);font-size:14px;margin:0 0 12px">Lipește linkul de pe wol.jw.org (un capitol sau cuprinsul cărții). Studio de pe Mac o transformă în audio și o publică singur, când e pornit.</p>
+      <input type="url" id="bookUrl" placeholder="https://wol.jw.org/…" autocomplete="off">
+      <label style="display:flex;gap:10px;align-items:center;font-size:14px;margin:12px 2px"><input type="checkbox" id="whole" checked> Dacă e un capitol, adaugă toată cartea</label>
+      <button class="btn primary" id="sendBook" style="width:100%">Trimite</button>
+      ${list.length ? `<h3 style="margin-top:20px">Cereri recente</h3>` + list.map(([k, r]) => { const s = st[r.status] || [r.status, ""];
+        return `<div class="req"><span style="min-width:0"><b>${esc(r.book || r.url)}</b><small>${esc(r.msg || r.url)}</small></span><span class="pill ${s[1]}">${s[0]}</span></div>`; }).join("") : ""}`;
+    $("#sendBook").onclick = async () => {
+      const url = $("#bookUrl").value.trim();
+      if(!/^https?:\/\//.test(url)){ toast("Lipește un link care începe cu https://"); return; }
+      try{ await B.addBook(url, $("#whole").checked); toast("Trimis. Apare în bibliotecă după ce Studio îl termină."); draw(); }
+      catch(e){ toast("Nu s-a putut trimite: " + (e.code || e.message)); }
+    };
+  };
+  sheet(`<p style="color:var(--muted)">Se încarcă…</p>`); await draw();
 }
 
 async function drawAdmin(){
@@ -951,8 +1055,8 @@ async function refreshAll(){
 function render(){
   if(!USER) return;
   const [ , tab = "home", arg] = (location.hash || "#/home").split("/");
-  document.querySelectorAll("nav.tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === tab || (tab === "book" && a.dataset.tab === "library")));
-  if(tab === "library") viewLibrary(); else if(tab === "book") viewBook(decodeURIComponent(arg || ""));
+  document.querySelectorAll("nav.tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === tab || ((tab === "book" || tab === "daily") && a.dataset.tab === "library")));
+  if(tab === "library") viewLibrary(); else if(tab === "daily") viewDaily(); else if(tab === "book") viewBook(decodeURIComponent(arg || ""));
   else if(tab === "history") viewHistory(); else if(tab === "profile") viewProfile(); else viewHome();
 }
 window.addEventListener("hashchange", () => { closeSheet(); render(); window.scrollTo(0, 0); });
