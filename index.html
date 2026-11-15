@@ -34,12 +34,19 @@ svg.i.fill{fill:currentColor;stroke:none}
 .hidden{display:none!important}
 
 /* ---------- shell ---------- */
-.view{max-width:720px;margin:0 auto;padding:calc(var(--safe-t) + 18px) 18px calc(var(--nav-h) + var(--mini-h) + var(--safe-b) + 24px)}
+.view{max-width:720px;margin:0 auto;padding:0 18px calc(var(--nav-h) + var(--mini-h) + var(--safe-b) + 24px)}
+.appbar{position:sticky;top:0;z-index:15;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0 -18px 6px;padding:calc(var(--safe-t) + 10px) 18px 10px;background:color-mix(in srgb,var(--bg) 85%,transparent);
+  backdrop-filter:saturate(1.4) blur(18px);-webkit-backdrop-filter:saturate(1.4) blur(18px)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:750;font-size:21px;letter-spacing:-.02em;color:var(--ink);text-decoration:none}
+.brand img{width:32px;height:32px;border-radius:9px;box-shadow:0 2px 8px color-mix(in srgb,var(--brand) 35%,transparent)}
+h1.big{font:700 30px/1.15 var(--serif);margin:8px 0 18px;letter-spacing:-.01em}
+.sub2{color:var(--muted);font-size:15px;margin:-12px 0 18px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 .top h1{font:700 30px/1.1 var(--serif);margin:0;letter-spacing:-.01em}
 .hello{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
 .hello .mark{width:22px;height:22px;border-radius:6px}
-.avatar{text-decoration:none;width:38px;height:38px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-weight:700;color:var(--accent)}
+.avatar{text-decoration:none;flex:none;width:38px;height:38px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-weight:700;color:var(--accent)}
 h2.sec{font:650 19px/1.2 var(--sans);margin:26px 0 12px;display:flex;justify-content:space-between;align-items:baseline}
 h2.sec a{font-size:14px;font-weight:600;color:var(--accent);text-decoration:none}
 .empty{color:var(--muted);font-size:15px;padding:18px;background:var(--card);border-radius:16px;text-align:center}
@@ -173,8 +180,9 @@ nav.tabs a.on{color:var(--accent)}
 
 /* ---------- full player ---------- */
 .player{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;transform:translateY(100%);
-  transition:transform .32s cubic-bezier(.2,.8,.2,1);padding:calc(var(--safe-t) + 8px) 22px calc(var(--safe-b) + 16px)}
-.player.open{transform:none}
+  overflow:hidden;visibility:hidden;pointer-events:none;
+  transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility 0s linear .32s;padding:calc(var(--safe-t) + 8px) 22px calc(var(--safe-b) + 16px)}
+.player.open{transform:none;visibility:visible;pointer-events:auto;transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility 0s}
 .player .bgblur{position:absolute;inset:0;z-index:-1;opacity:.55;filter:blur(60px) saturate(1.3);transform:scale(1.4)}
 .player .phead{display:flex;align-items:center;justify-content:space-between;height:48px}
 .player .phead .lbl{font-size:13px;font-weight:650;color:var(--muted);text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
@@ -216,6 +224,7 @@ nav.tabs a.on{color:var(--accent)}
 /* ---------- sheets ---------- */
 .sheetbg{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s}
 .sheetbg.open{opacity:1;pointer-events:auto}
+.sheet:not(.open){visibility:hidden;transition:transform .25s,visibility 0s linear .25s}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;max-width:560px;margin:0 auto;background:var(--card);border-radius:22px 22px 0 0;
   padding:10px 18px calc(var(--safe-b) + 18px);transform:translateY(100%);transition:transform .25s;max-height:75vh;overflow:auto}
 .sheet.open{transform:none}
@@ -573,6 +582,8 @@ function renderPlayState(){
   $("#miniPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#pPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#pPlay").setAttribute("aria-label", playing ? "Pauză" : "Redă");
+  const cp = $("#contPlay"); if(cp && ST.last && ST.last.book === PL.book) cp.innerHTML = icon(playing ? "pause" : "play", true);
+  const bp = $("#bPlay"); if(bp && location.hash.startsWith("#/book/") && decodeURIComponent(location.hash.slice(7)) === PL.book) render();
   try{ navigator.mediaSession.playbackState = playing ? "playing" : "paused"; }catch(e){}
 }
 let seeking = false;
@@ -680,22 +691,27 @@ function tile(id){
     <div class="tt">${esc(b.title)}</div><div class="ts">${p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
     ${p.started && p.pct < .995 ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div>` : ""}</a>`;
 }
+function appbar(left){
+  const initial = esc(((USER && USER.name) || "?").trim()[0].toUpperCase());
+  return `<header class="appbar">${left || `<a class="brand" href="#/home"><img src="icon-192.png" alt="">Sona</a>`}<a class="avatar" href="#/profile" aria-label="Profil">${initial}</a></header>`;
+}
+const firstName = () => ((USER && USER.name) || "").trim().split(/\s+/)[0];
 function bookIds(){ return Object.keys(BOOKS).sort((a, b) => (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
 
 function viewHome(){
   const ids = bookIds();
-  const last = ST.last && BOOKS[ST.last.book] ? ST.last.book : null;
+  const last = ST.last && BOOKS[ST.last.book] ? ST.last.book : (ids[0] || null);
+  const started = last && bookProgress(last).started;
   const inProgress = ids.filter(id => { const p = bookProgress(id); return p.started && p.pct < .995 && id !== last; });
   const favs = ids.filter(id => (ST.fav||{})[id]);
-  const hour = new Date().getHours(); const hi = hour < 12 ? "Bună dimineața" : hour < 18 ? "Bună ziua" : "Bună seara";
   let cont = "";
   if(last){ const r = resumePoint(last), p = bookProgress(last);
-    cont = `<div class="continue">${coverHTML(last)}<div class="meta"><div class="k">Continuă</div><div class="t">${esc(BOOKS[last].title)}</div>
-      <div class="c">${esc(r.ch.title)} · rămas ${fmtDur(p.left)}</div><div class="bar"><i style="width:${p.pct*100}%"></i></div></div>
+    cont = `<div class="continue">${coverHTML(last)}<div class="meta"><div class="k">${started ? "Continuă" : "Începe"}</div><div class="t">${esc(BOOKS[last].title)}</div>
+      <div class="c">${started ? `${esc(r.ch.title)} · rămas ${fmtDur(p.left)}` : `${esc(BOOKS[last].author || "")}${BOOKS[last].author ? " · " : ""}${fmtDur(p.total)}`}</div><div class="bar"><i style="width:${p.pct*100}%"></i></div></div>
       <button class="playbig" id="contPlay" aria-label="Continuă">${icon(PL.book === last && !audio.paused ? "pause" : "play", true)}</button></div>`; }
   root.innerHTML = `<div class="view">
-    <div class="top"><div><div class="hello"><img class="mark" src="icon-192.png" alt="">Sona · ${hi}, ${esc(USER.name)}</div><h1>Acasă</h1></div><a class="avatar" href="#/profile">${esc((USER.name||"?")[0].toUpperCase())}</a></div>
-    ${cont || (ids.length ? `<div class="note">Alege o carte și apasă ▶. Aplicația ține minte unde ai rămas, pe orice dispozitiv.</div>` : "")}
+    ${appbar()}<div style="height:8px"></div>
+    ${cont}
     ${inProgress.length ? `<h2 class="sec">În curs</h2><div class="shelf">${inProgress.map(tile).join("")}</div>` : ""}
     ${favs.length ? `<h2 class="sec">Favorite</h2><div class="shelf">${favs.map(tile).join("")}</div>` : ""}
     <h2 class="sec">Adăugate recent <a href="#/library">Toate</a></h2>
@@ -707,7 +723,7 @@ function viewHome(){
 let libFilter = "all", libQuery = "";
 function viewLibrary(){
   const f = [["all","Toate"],["prog","În curs"],["fav","Favorite"],["done","Terminate"],["new","Neîncepute"]];
-  root.innerHTML = `<div class="view"><div class="top"><h1>Bibliotecă</h1></div>
+  root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Bibliotecă</h1>
     <label class="search">${icon("search")}<input id="q" type="search" placeholder="Caută o carte" value="${esc(libQuery)}"></label>
     <div class="chips">${f.map(([k, l]) => `<button class="chip ${libFilter === k ? "on" : ""}" data-f="${k}">${l}</button>`).join("")}</div>
     <div id="libGrid"></div></div>`;
@@ -728,7 +744,7 @@ function viewBook(id){
   const chs = chaptersOf(id), p = bookProgress(id), r = resumePoint(id), fav = (ST.fav||{})[id];
   const playingThis = PL.book === id && !audio.paused;
   const label = playingThis ? "Pauză" : p.pct >= .995 ? "Ascultă din nou" : p.started ? "Continuă" : "Ascultă";
-  root.innerHTML = `<div class="view"><div class="top"><button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button></div>
+  root.innerHTML = `<div class="view">${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
     <div class="bookhero">${coverHTML(id)}<h1>${esc(b.title)}</h1><div class="by">${esc(b.author || "")}</div>
       <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${fmtDur(p.total)}</span></div></div>
     <div class="actions"><button class="btn primary" id="bPlay">${icon(playingThis ? "pause" : "play", true)} ${label}</button>
@@ -756,7 +772,7 @@ function viewHistory(){
       <span class="x"><b>${esc(ch ? ch.title : "Capitol")}</b><small>${esc(BOOKS[h.book].title)} · ${heard > 30 ? "ascultat " + fmtDur(heard) : "pornit"} · ${fmtClock(h.from||0)}–${fmtClock(h.to||0)}</small></span>
       <span class="when">${hhmm(h.at)}</span></button>`;
   }
-  root.innerHTML = `<div class="view"><div class="top"><h1>Istoric</h1></div>${html || `<div class="empty">Ce asculți apare aici, cu ziua și ora.</div>`}</div>`;
+  root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Istoric</h1>${html || `<div class="empty">Ce asculți apare aici, cu ziua și ora.</div>`}</div>`;
   root.querySelectorAll(".hrow").forEach(el => el.onclick = () => playChapter(el.dataset.b, el.dataset.c, {t: +el.dataset.t, open: true}));
 }
 
@@ -766,7 +782,7 @@ function viewProfile(){
   const chDone = ids.reduce((s, id) => s + chaptersOf(id).filter(chapterDone).length, 0);
   const seg = (key, vals, fmt) => `<div class="seg" data-k="${key}">${vals.map(v => `<button class="${p[key] === v ? "on" : ""}" data-v="${v}">${fmt(v)}</button>`).join("")}</div>`;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  root.innerHTML = `<div class="view"><div class="top"><h1>Profil</h1></div>
+  root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Profil</h1>
     <div class="continue" style="box-shadow:none"><div class="avatar" style="width:56px;height:56px;font-size:24px">${esc((USER.name||"?")[0].toUpperCase())}</div>
       <div class="meta"><div class="t" style="margin:0">${esc(USER.name)}</div><div class="c">${esc(USER.email || "")}</div></div></div>
     <div class="stats"><div class="stat"><b>${fmtDur((ST.stats||{}).sec || 0).replace(" min","m").replace(" h","h")}</b><span>ascultat</span></div>
