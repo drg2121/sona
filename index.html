@@ -532,6 +532,13 @@ h4.sub{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(
 .person .tg{padding:10px 0 0 50px;cursor:pointer}
 .person .tg b{font-size:14.5px;font-weight:600}
 .person .acts{display:flex;gap:8px;padding:10px 0 0 50px}
+
+.sheet .group .field select{flex:1;min-width:0;border:0;background:none;outline:none;padding:15px 22px 15px 0;font-size:16px;color:var(--ink);
+  -webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 9px) 55%,calc(100% - 4px) 55%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.field.hide{display:none}
+.tg .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff;font-weight:700;font-size:14px}
+.tg.dim{opacity:.45;pointer-events:none}
 </style>
 </head>
 <body>
@@ -703,11 +710,34 @@ async function FirebaseBackend(cfg){
     async signOut(){ await A.signOut(auth); },
     async resetPassword(email){ await A.sendPasswordResetEmail(auth, email); },
     async books(){
-      const [pub, own] = await Promise.all([val("ab/books"), val(`ab/own/${me().uid}/books`).catch(() => null)]);
+      const uid = me().uid;
+      const [pub, own, shMe, shAll] = await Promise.all([val("ab/books"), val(`ab/own/${uid}/books`).catch(() => null),
+        val(`ab/shared/${uid}`).catch(() => null), val("ab/shared/all").catch(() => null)]);
       const out = pub || {}; for(const [k, v] of Object.entries(own || {})) out[k] = {...v, own: true};
+      // books other people shared with me (or with everyone)
+      const seen = new Set();
+      await Promise.all(Object.values({...(shAll || {}), ...(shMe || {})}).map(async x => {
+        if(!x || !x.owner || !x.bid || x.owner === uid || seen.has(x.owner + "/" + x.bid)) return; seen.add(x.owner + "/" + x.bid);
+        const b = await val(`ab/own/${x.owner}/books/${x.bid}`).catch(() => null);
+        if(b) out[`s-${x.owner.slice(0, 8)}-${x.bid}`] = {...b, own: false, share: undefined, sharedFrom: x.owner, srcId: x.bid, sharedBy: x.by || ""};
+      }));
       return out; },
+    async people(){ return (await val("ab/people").catch(() => null)) || {}; },
+    async registerPerson(info){ await D.update(D.ref(db, `ab/people/${me().uid}`), info).catch(() => {}); },
+    async addPeople(map){ await Promise.all(Object.entries(map).map(([u, p]) => D.update(D.ref(db, `ab/people/${u}`), p).catch(() => {}))); },
+    async setShare(id, who){
+      const u = me(), b = BOOKS[id], key = `${u.uid}~${id}`, before = b.share || {}, share = {};
+      if(who.all) share.all = true; for(const x of who.uids) share[x] = true;
+      await D.set(D.ref(db, `ab/own/${u.uid}/books/${id}/share`), Object.keys(share).length ? share : null);
+      const meta = {owner: u.uid, bid: id, title: b.title, by: (u.displayName || (u.email || "").split("@")[0] || "").split(" ")[0], at: Date.now()};
+      for(const t of new Set([...Object.keys(before), ...Object.keys(share)]))
+        await D.set(D.ref(db, `ab/shared/${t}/${key}`), share[t] ? meta : null).catch(() => {});
+      b.share = Object.keys(share).length ? share : undefined;
+    },
     async audioUrl(bookId, ch){ if(!ch.audio) throw new Error("capitol fără audio"); return ch.audio; },
-    async transcript(bookId, ch){ const t = await val(`${bookBase(bookId, "texts")}/${bookId}/${ch.id}`); if(!t) throw new Error("fără text"); return JSON.parse(t); },
+    async transcript(bookId, ch){ const b = BOOKS[bookId];
+      const t = await val(b && b.sharedFrom ? `ab/own/${b.sharedFrom}/texts/${b.srcId}/${ch.id}` : `${bookBase(bookId, "texts")}/${bookId}/${ch.id}`);
+      if(!t) throw new Error("fără text"); return JSON.parse(t); },
     async state(){ return (await val(`ab/users/${me().uid}`)) || {}; },
     async write(path, value){ await D.set(uref(path), value); },
     async addHistory(entry){ const r = D.push(uref("history")); await D.set(r, entry); return r.key; },
@@ -770,6 +800,7 @@ async function FirebaseBackend(cfg){
     async setCover(id, url){ await D.set(D.ref(db, `${bookBase(id, "books")}/${id}/cover`), url); },
     async updateBook(id, fields){ await D.update(D.ref(db, `${bookBase(id, "books")}/${id}`), fields); },
     async deleteBook(id){ const t = bookBase(id, "texts"), b = bookBase(id, "books");
+      for(const k of Object.keys((BOOKS[id] && BOOKS[id].share) || {})) await D.set(D.ref(db, `ab/shared/${k}/${me().uid}~${id}`), null).catch(() => {});
       await D.set(D.ref(db, `${t}/${id}`), null); await D.set(D.ref(db, `${b}/${id}`), null); },
     async bookRequests(){ return (USER && USER.admin ? await val("ab/inbox") : await val(`ab/own/${me().uid}/adds`)) || {}; },
   };
@@ -1371,7 +1402,7 @@ function collectionSheet(id){
     });
 }
 function collectionPill(id){
-  const edit = (USER.admin || BOOKS[id].own) && B.mode !== "local";
+  const edit = (USER.admin || BOOKS[id].own) && !BOOKS[id].sharedFrom && B.mode !== "local";
   return `<div style="text-align:center"><button class="colpill" id="colPill" ${edit ? "" : "disabled"}>${esc(collectionOf(id))}${edit ? icon("edit") : ""}</button></div>`;
 }
 
@@ -1385,7 +1416,8 @@ function viewBook(id){
   root.innerHTML = `<div class="view"><div class="bookbg" style="--h:${b.hue ?? hueOf(b.title)}">${b.cover ? `<img src="${esc(b.cover)}" alt="">` : ""}</div>
     ${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
     <div class="bookhero">${coverHTML(id)}<h1>${esc(b.title)}</h1><div class="by">${esc(b.author || "")}</div>
-      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${textOnly ? (b.textOnly ? "Doar text" : "Doar text, deocamdată") : fmtDur(p.total)}</span>${b.own ? `<span>Doar pentru tine</span>` : ""}</div>${collectionPill(id)}</div>
+      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${textOnly ? (b.textOnly ? "Doar text" : "Doar text, deocamdată") : fmtDur(p.total)}</span>${b.sharedFrom ? `<span>De la ${esc(b.sharedBy || "un prieten")}</span>`
+      : b.own ? `<span>${b.share ? (b.share.all ? "Împărțită cu toți" : `Împărțită cu ${Object.keys(b.share).length}`) : "Doar pentru tine"}</span>` : ""}</div>${collectionPill(id)}</div>
     <div class="actions"><button class="btn primary" id="bPlay">${icon(playingThis ? "pause" : "play", true)} ${label}</button>
       <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button>
       <button class="btn sq" id="bMore" aria-label="Mai multe">${icon("more")}</button></div>
@@ -1428,6 +1460,7 @@ function moreSheet(id){
     <button class="opt" id="mReset"><span>Ascultă din nou de la început</span>${icon("back")}</button>
     ${n ? `<button class="opt" id="mMarks"><span>Semne de carte (${n})</span>${icon("bookmark")}</button>` : ""}
     ${bookDownloaded(id) || chaptersOf(id).some(c => isDownloaded(c.id)) ? `<button class="opt" id="mRmDl"><span>Șterge descărcarea de pe telefon</span>${icon("trash")}</button>` : ""}
+    ${canManage(id) && BOOKS[id].own ? `<button class="opt" id="mShare"><span>Împarte cu alții</span>${icon("user")}</button>` : ""}
     ${canManage(id) ? `<button class="opt" id="mInfo"><span>Schimbă titlul sau autorul</span>${icon("edit")}</button>
       <button class="opt" id="mCover"><span>Schimbă coperta</span>${icon("image")}</button>
       <button class="opt" id="mCol"><span>Mută în altă colecție</span>${icon("lib")}</button>
@@ -1440,11 +1473,36 @@ function moreSheet(id){
       const rd = $("#mRmDl"); if(rd) rd.onclick = async () => { await removeDownload(id); closeSheet(); toast("Descărcarea a fost ștearsă"); render(); };
       const mv = $("#mCover"); if(mv) mv.onclick = () => coverSheet(id);
       const mi = $("#mInfo"); if(mi) mi.onclick = () => infoSheet(id);
+      const ms = $("#mShare"); if(ms) ms.onclick = () => shareSheet(id);
       const md = $("#mDel"); if(md) md.onclick = () => deleteSheet(id);
     });
 }
 /* your own books are yours to manage; the shared ones only the admin manages */
-const canManage = id => B.mode !== "local" && !!BOOKS[id] && BOOKS[id].kind !== "daily" && (BOOKS[id].own || USER.admin);
+const canManage = id => B.mode !== "local" && !!BOOKS[id] && BOOKS[id].kind !== "daily" && !BOOKS[id].sharedFrom && (BOOKS[id].own || USER.admin);
+const tgRow = (id, title, sub, on, extra = "") => `<label class="tg">${extra}<span><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span><input type="checkbox" class="switch" id="${id}" ${on ? "checked" : ""}></label>`;
+async function shareSheet(id){
+  const b = BOOKS[id];
+  sheet(`<p style="color:var(--muted)">Se încarcă…</p>`);
+  let people = {}; try{ people = await B.people(); }catch(e){}
+  const list = Object.entries(people).filter(([u, p]) => u !== USER.uid && p && p.name).sort((x, y) => x[1].name.localeCompare(y[1].name, "ro"));
+  const cur = b.share || {};
+  $("#sheetBody").innerHTML = `<div class="addhead"><h3>Împarte cartea</h3><button class="sheetx" id="shX" style="position:static" aria-label="Închide">${icon("x")}</button></div>
+    <p class="fine" style="margin:-6px 4px 12px">„${esc(b.title)}” apare și în biblioteca lor, cu textul și vocea. Doar tu o poți modifica sau șterge.</p>
+    <div class="group">${tgRow("shAll", "Toți cei cu acces", "Și cei care primesc acces de acum încolo", !!cur.all)}</div>
+    <div class="group" id="shList">${list.length ? list.map(([u, p]) => `<label class="tg ${cur.all ? "dim" : ""}"><span class="av" style="background:hsl(${hueOf(p.name)} 45% 45%)">${esc(p.name.trim()[0].toUpperCase())}</span>
+        <span><b>${esc(p.name)}</b></span><input type="checkbox" class="switch" data-u="${esc(u)}" ${cur[u] ? "checked" : ""}></label>`).join("")
+      : `<div class="tg"><span><small>Încă nu sunt alte persoane în aplicație. Apar aici după ce intră o dată în Sona.</small></span></div>`}</div>
+    <button class="btn primary" id="shSave" style="width:100%">Salvează</button>`;
+  $("#shX").onclick = closeSheet;
+  $("#shAll").onchange = () => $("#shList").querySelectorAll(".tg").forEach(x => x.classList.toggle("dim", $("#shAll").checked));
+  $("#shSave").onclick = async () => {
+    const all = $("#shAll").checked, uids = all ? [] : [...$("#shList").querySelectorAll("[data-u]")].filter(x => x.checked).map(x => x.dataset.u);
+    $("#shSave").disabled = true;
+    try{ await B.setShare(id, {all, uids}); saveCache(); closeSheet();
+      toast(all ? "Toți cei cu acces o văd acum" : uids.length ? `Împărțită cu ${uids.length} ${uids.length === 1 ? "persoană" : "persoane"}` : "Acum e doar a ta"); render(); }
+    catch(e){ $("#shSave").disabled = false; toast("Nu s-a putut salva: " + (e.code || e.message)); }
+  };
+}
 function infoSheet(id){
   const b = BOOKS[id];
   sheet(`<h3>Titlu și autor</h3>
@@ -1820,7 +1878,7 @@ function stopSample(){ if(voiceSample){ voiceSample.pause(); voiceSample = null;
 async function addBookSheet(){
   let mode = "file", file = null, reqs = {}, srv = null, sending = false, voice = store.get("ab_voice", "M5"), sLang = "ro", wantAudio = store.get("ab_want_audio", true);
   const keep = {};
-  const remember = () => ["bookUrl", "bookTitle", "bookAuthor", "bookCol"].forEach(id => { const el = $("#" + id); if(el) keep[id] = el.value; });
+  const remember = () => ["bookUrl", "bookTitle", "bookAuthor", "bookCol", "bookColSel"].forEach(id => { const el = $("#" + id); if(el) keep[id] = el.value; });
   const val0 = id => esc(keep[id] || "");
   const paint = () => {
     const on = serverOn(srv);
@@ -1836,10 +1894,13 @@ async function addBookSheet(){
           <span class="dtx"><b>${file ? esc(file.name) : "Alege fișierul"}</b><small>${file ? fmtSize(file.size) + " · atinge ca să schimbi" : "PDF, Word sau text · cel mult 40 MB"}</small></span>
           <input type="file" id="bookFile" hidden accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.md,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>` : ""}
       <div class="group">
-        ${mode === "file" ? `<label class="field"><span>Titlu</span><input type="text" id="bookTitle" placeholder="opțional" maxlength="120" value="${val0("bookTitle")}"></label>
-          <label class="field"><span>Autor</span><input type="text" id="bookAuthor" placeholder="opțional" maxlength="80" value="${val0("bookAuthor")}"></label>`
+        ${mode === "file" ? `<label class="field"><span>Titlu</span><input type="text" id="bookTitle" placeholder="automat, din fișier" maxlength="120" value="${val0("bookTitle")}"></label>
+          <label class="field"><span>Autor</span><input type="text" id="bookAuthor" placeholder="automat" maxlength="80" value="${val0("bookAuthor")}"></label>`
         : `<label class="field"><span>Link</span><input type="url" id="bookUrl" placeholder="https://…" autocomplete="off" value="${val0("bookUrl")}"></label>`}
-        <label class="field"><span>Colecție</span><input type="text" id="bookCol" list="colList" placeholder="de ex. General, SF" maxlength="40" value="${val0("bookCol")}"></label>
+        <label class="field"><span>Colecție</span><select id="bookColSel">${[...new Set(["General", ...collections().filter(c => c !== "JW" || USER.admin)])].map(c =>
+          `<option value="${esc(c)}" ${(keep.bookColSel || store.get("ab_last_col", "General")) === c ? "selected" : ""}>${esc(c)}</option>`).join("")}
+          <option value="__new" ${keep.bookColSel === "__new" ? "selected" : ""}>Altă colecție…</option></select></label>
+        <label class="field ${keep.bookColSel === "__new" ? "" : "hide"}" id="newColRow"><span>Nouă</span><input type="text" id="bookCol" placeholder="numele colecției" maxlength="40" value="${val0("bookCol")}"></label>
       </div>
       <datalist id="colList">${collections().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       <div class="group">
@@ -1859,7 +1920,8 @@ async function addBookSheet(){
         return `<div class="req" data-rq="${esc(k)}"><span style="min-width:0"><b>${esc(r.book || r.title || r.name || r.url || "Carte")}</b><small>${esc(r.msg || (r.status === "nou" ? "Așteaptă serverul" : ""))}</small></span><span class="pill ${x[1]}">${x[0]}</span></div>`; }).join("") + `</div>` : ""}`;
     $("#sheetBody").querySelectorAll("[data-m]").forEach(b => b.onclick = () => { remember(); stopSample(); mode = b.dataset.m; paint(); });
     const fi = $("#bookFile"); if(fi) fi.onchange = () => { remember(); file = fi.files[0] || null;
-      if(file && !keep.bookTitle) keep.bookTitle = file.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim(); paint(); };
+      paint(); };
+    $("#bookColSel").onchange = () => { const nw = $("#bookColSel").value === "__new"; $("#newColRow").classList.toggle("hide", !nw); if(nw) $("#bookCol").focus(); };
     $("#sendBook").onclick = send;
     $("#addX").onclick = closeSheet;
     $("#sheetBody").querySelectorAll("[data-rq]").forEach(el => el.onclick = () => { ADDS = {...ADDS, ...reqs}; requestSheet(el.dataset.rq); });
@@ -1881,7 +1943,10 @@ async function addBookSheet(){
   };
   const send = async () => {
     const btn = $("#sendBook"), forAll = $("#forAll") && $("#forAll").checked;
-    const base = {collection: $("#bookCol").value.trim().slice(0, 40), audio: $("#wantAudio").checked, owner: forAll ? "" : USER.uid,
+    const colSel = $("#bookColSel").value, collection = (colSel === "__new" ? $("#bookCol").value.trim() : colSel).slice(0, 40);
+    if(colSel === "__new" && !collection){ toast("Scrie numele colecției noi"); return; }
+    store.set("ab_last_col", colSel === "__new" ? collection : colSel);
+    const base = {collection, audio: $("#wantAudio").checked, owner: forAll ? "" : USER.uid,
       voice: $("#wantAudio").checked ? voice : undefined};
     stopSample();
     try{
@@ -1988,6 +2053,9 @@ async function drawAdmin(){
   const [req, ok, ups] = await Promise.all([B.requests(), B.allowedList(), B.uploaders ? B.uploaders().catch(() => ({})) : {}]).catch(() => [{}, {}, {}]);
   const person = (p, uid) => `<span style="min-width:0"><b style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name || p.email || uid)}</b>
     <small style="color:var(--muted)">${esc(p.email || "")}</small></span>`;
+  if(B.people && B.addPeople){   // keep the list of people complete for sharing
+    B.people().then(pp => { const miss = {}; for(const [u, p] of Object.entries(ok || {})) if(!pp[u] && (p.name || p.email)) miss[u] = {name: p.name || p.email.split("@")[0]}; if(Object.keys(miss).length) B.addPeople(miss); });
+  }
   const head = (p, uid, extra) => `<div class="ph"><span class="av" style="background:hsl(${hueOf(p.name || p.email || uid)} 45% 45%)">${esc(((p.name || p.email || "?").trim()[0] || "?").toUpperCase())}</span>
       <span class="pn"><b>${esc(p.name || p.email || uid)}</b><small>${esc(p.email || "")}</small></span>${extra}</div>`;
   const rows = Object.entries(req).map(([uid, p]) => `<div class="person">${head(p, uid, "")}
@@ -2168,6 +2236,7 @@ async function onUser(u){
     $("#lo").onclick = async ev => { ev.preventDefault(); await B.signOut(); location.reload(); }; return;
   }
   USER.admin = !!adm; USER.canAdd = !!can;
+  if(B.registerPerson) B.registerPerson({name: (USER.name || "").trim().slice(0, 60), photo: USER.photo || "", at: Date.now()});
   BOOKS = BOOKS || {}; ST = ST || {};
   if(B.mode !== "local"){ store.set("ab_last_user", {uid: u.uid, name: u.name, email: u.email, photo: u.photo || "", admin: USER.admin, canAdd: USER.canAdd}); saveCache(); }
   showApp();
