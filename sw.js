@@ -3,7 +3,7 @@
      (pull-to-refresh gets the newest version right away);
    - the Firebase code and the book covers are kept after the first visit;
    - books you download are served from the phone instead of the internet. */
-const CACHE = "sona-v14";
+const CACHE = "sona-v15";
 const AUDIO = "sona-audio";   // filled by the app when you tap "Descarcă"
 const SHELL = ["./", "index.html", "manifest.json", "firebase-config.js", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 const KEEP_FOREVER = ["www.gstatic.com", "cms-imgp.jw-cdn.org"];

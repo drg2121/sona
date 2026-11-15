@@ -659,17 +659,21 @@ async function cachedAudioUrl(ch){
     return URL.createObjectURL(await r.blob()); }catch(e){ return null; }
 }
 async function downloadBook(id, onProgress){
-  const chs = chaptersOf(id).filter(c => c.audio); const c = await caches.open(AUDIO_CACHE); const dl = DL.get(); let i = 0, opaque = 0;
+  const chs = chaptersOf(id).filter(c => c.audio); const c = await caches.open(AUDIO_CACHE); const dl = DL.get();
+  let i = 0, opaque = 0, failed = 0;
   for(const ch of chs){
     i++; onProgress && onProgress(i, chs.length);
-    if(!dl[ch.id]){
-      try{ const r = await fetch(ch.audio, {mode: "cors"}); if(!r.ok) throw 0; await c.put(ch.audio, r); }
-      catch(e){ await c.add(new Request(ch.audio, {mode: "no-cors"})); opaque++; }   // works where the browser allows it
+    if(dl[ch.id]) continue;
+    try{
+      let r = null;
+      try{ r = await fetch(ch.audio, {mode: "cors"}); if(!r.ok) r = null; }catch(e){ r = null; }
+      if(!r){ r = await fetch(ch.audio, {mode: "no-cors"}); opaque++; }   // the file can be kept, though not read by the page
+      await c.put(ch.audio, r);
       try{ const t = await B.transcript(id, ch); await c.put(textKey(id, ch.id), new Response(JSON.stringify(t), {headers: {"Content-Type": "application/json"}})); }catch(e){}
       dl[ch.id] = Date.now(); DL.set(dl);
-    }
+    }catch(e){ console.warn("download", ch.id, e); failed++; }
   }
-  return {count: chs.length, opaque};
+  return {count: chs.length, opaque, failed};
 }
 async function removeDownload(id){
   const c = await caches.open(AUDIO_CACHE); const dl = DL.get();
@@ -1175,8 +1179,9 @@ function viewBook(id){
     if(!navigator.onLine){ toast("Pentru descărcare ai nevoie de internet"); return; }
     dlb.disabled = true;
     try{ const r = await downloadBook(id, (i, n) => { dlb.innerHTML = `${icon("dl")} Se descarcă ${i} din ${n}…`; });
-      toast(r.opaque ? "Descărcată (pe unele telefoane redarea offline cere încă o setare)" : "Descărcată: o poți asculta și în modul avion"); }
-    catch(e){ toast("Descărcarea s-a oprit: " + (e.message || e)); }
+      toast(r.failed ? `${r.count - r.failed} din ${r.count} capitole descărcate. Mai apasă o dată pentru restul.`
+        : r.opaque ? "Descărcată. Pe iPhone, ascultarea fără internet mai cere o setare pe care o pregătim." : "Descărcată: o poți asculta și în modul avion"); }
+    catch(e){ console.warn(e); toast("Descărcarea nu a mers. Verifică internetul și încearcă din nou."); }
     render();
   };
   $("#bFav").onclick = () => toggleFav(id);
