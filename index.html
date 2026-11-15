@@ -501,6 +501,37 @@ body.reading:has(.mini.hidden) .selbar{bottom:calc(var(--safe-b) + 18px)}
 h4.sub{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:22px 6px 8px;font-weight:700}
 .group .req{padding:12px 16px;border-bottom:1px solid var(--line)}
 .group .req:last-child{border-bottom:0}
+
+/* books on their way, status, cancelling */
+.cover.prep::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.16) 50%,transparent 65%);background-size:250% 100%;animation:shimmer 2.2s linear infinite;z-index:2}
+@keyframes shimmer{from{background-position:130% 0}to{background-position:-130% 0}}
+.cover .pbadge{position:absolute;left:8px;right:8px;bottom:8px;z-index:3;background:rgba(0,0,0,.55);color:#fff;border-radius:99px;font:700 10.5px/1 var(--sans);padding:5px 8px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.err .cover{filter:grayscale(.7)}
+.vbanner{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px 14px;margin:14px 0 4px;font-size:14px}
+.vbanner svg{width:20px;height:20px;color:var(--accent);flex:none}
+.vbanner span{flex:1;min-width:0;color:var(--muted)}
+.vbanner b{color:var(--ink)}
+.vbanner .bar{margin-top:6px}
+.reqsheet .big{font:700 20px/1.25 var(--serif);margin:4px 0 6px}
+.reqsheet .steps{display:flex;flex-direction:column;gap:10px;margin:14px 0}
+.reqsheet .st{display:flex;gap:10px;align-items:center;font-size:14.5px;color:var(--muted)}
+.reqsheet .st i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--bg2);font-style:normal;font-size:12px;font-weight:800}
+.reqsheet .st.done{color:var(--ink)} .reqsheet .st.done i{background:var(--ok);color:#fff}
+.reqsheet .st.now{color:var(--ink);font-weight:650} .reqsheet .st.now i{background:var(--accent);color:var(--accent-ink)}
+.sheetx{position:absolute;right:14px;top:12px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--bg2);color:var(--muted);z-index:2}
+.sheetx svg{width:18px;height:18px}
+.group .req{cursor:pointer}
+.person{padding:12px 16px;border-bottom:1px solid var(--line)}
+.person:last-child{border-bottom:0}
+.person .ph{display:flex;align-items:center;gap:12px}
+.person .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff;font-weight:700}
+.person .pn{flex:1;min-width:0}
+.person .pn b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person .pn small{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person .rm{color:var(--muted);font-size:14px;font-weight:600;padding:6px 2px;flex:none}
+.person .tg{padding:10px 0 0 50px;cursor:pointer}
+.person .tg b{font-size:14.5px;font-weight:600}
+.person .acts{display:flex;gap:8px;padding:10px 0 0 50px}
 </style>
 </head>
 <body>
@@ -705,6 +736,10 @@ async function FirebaseBackend(cfg){
       const key = token.slice(-24).replace(/[^\w-]/g, "_");
       await D.set(D.ref(db, `ab/push/${me().uid}/${key}`), {token, at: Date.now(), ua: navigator.userAgent.slice(0, 120)});
       store.set("ab_push", key);
+    },
+    async cancelRequest(rid, mode){
+      await D.set(D.ref(db, `ab/inbox/${rid}/cancel`), mode);
+      await D.update(D.ref(db, `ab/own/${me().uid}/adds/${rid}`), {msg: mode === "voice" ? "Se oprește vocea…" : "Se anulează…"}).catch(() => {});
     },
     async testPush(){ await D.set(D.push(D.ref(db, `ab/pushtest/${me().uid}`)), {at: Date.now()}); },
     async canAdd(){ return !!(await val(`ab/uploaders/${me().uid}`).catch(() => null)); },
@@ -1071,6 +1106,13 @@ function chapterSheet(){
 function sheet(html, bind){ $("#sheetBody").innerHTML = html; bind && bind($("#sheetBody")); $("#sheet").classList.add("open"); $("#sheetBg").classList.add("open"); }
 function closeSheet(){ if(typeof stopSample === "function") stopSample(); $("#sheet").classList.remove("open"); $("#sheetBg").classList.remove("open"); }
 $("#sheetBg").onclick = closeSheet;
+(function sheetSwipe(){
+  const sh = $("#sheet"); let y0 = null, dy = 0, drag = false;
+  sh.addEventListener("touchstart", e => { y0 = sh.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; drag = false; }, {passive: true});
+  sh.addEventListener("touchmove", e => { if(y0 == null) return; dy = e.touches[0].clientY - y0;
+    if(dy > 10 && sh.scrollTop <= 0){ drag = true; sh.style.transition = "none"; sh.style.transform = `translateY(${dy}px)`; } }, {passive: true});
+  sh.addEventListener("touchend", () => { if(drag){ sh.style.transition = ""; sh.style.transform = ""; if(dy > 110) closeSheet(); } y0 = null; drag = false; });
+})();
 let toastT; function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600); }
 
 async function toggleFav(id){
@@ -1089,8 +1131,12 @@ function tile(id){
     return `<a class="tile" href="#/book/${encodeURIComponent(id)}">${coverHTML(id, "", fav ? `<span class="badge">${icon("heart", true)}</span>` : "")}
       <div class="tt">${esc(b.title)}</div><div class="ts">${d && d.book === id ? "Azi: " + esc(d.ch.title.split(", ").pop()) : chaptersOf(id).length + " zile"}</div></a>`; }
   return `<a class="tile" href="#/book/${encodeURIComponent(id)}">${coverHTML(id, "", fav ? `<span class="badge">${icon("heart", true)}</span>` : "")}
-    <div class="tt">${esc(b.title)}</div><div class="ts">${!playable(id).length ? "Carte de citit" : p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
+    <div class="tt">${esc(b.title)}</div><div class="ts">${voiceLeft(id) ? `Voce: ${voiceLeft(id).ready} din ${voiceLeft(id).total} capitole` : !playable(id).length ? "Carte de citit" : p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
     ${p.started && p.pct < .995 ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div>` : ""}</a>`;
+}
+function voiceLeft(id){
+  const chs = Object.values((BOOKS[id] || {}).chapters || {}), wait = chs.filter(c => c.pending && !c.textOnly).length;
+  return wait ? {ready: chs.length - wait, total: chs.length} : null;
 }
 function offlinePill(){ return navigator.onLine ? "" : `<span class="offpill">${icon("cloudoff")}Offline</span>`; }
 window.addEventListener("online", () => { render(); toast("Ești din nou online"); });
@@ -1284,16 +1330,27 @@ function viewLibrary(){
       if(libFilter === "fav") return !!(ST.fav||{})[id];
       if(libFilter === "prog") return !isDaily(id) && p.started && p.pct < .995;
       return true; });
-    if(!ids.length){ $("#libGrid").innerHTML = `<div class="empty">Nimic aici.</div>`; return; }
+    const hidden = store.get("ab_hidden_adds", {}) || {};
+    const prep = libFilter === "all" && !q ? myAdds().filter(([k, r]) => !hidden[k] && !bookOfAdd(r) && (addActive(r) || (r.status === "eroare" && Date.now() - (r.at || 0) < 3 * 864e5)))
+      .sort((x, y) => (y[1].at || 0) - (x[1].at || 0)) : [];
+    const prepHTML = prep.length ? `<h2 class="sec">Se pregătesc</h2><div class="shelf">${prep.map(([k, r]) => {
+        const name = addName(r), err = r.status === "eroare";
+        return `<button class="tile ${err ? "err" : ""}" data-add="${esc(k)}" style="text-align:left"><div class="cover ${err ? "" : "prep"}" style="--h:${hueOf(name)}">
+          <div class="ct"><div class="cmark">${icon(err ? "x" : "wave")}</div><div class="ctitle">${esc(name)}</div><div class="cauth">${esc(r.kind === "link" ? "link" : (r.kind || "carte").toUpperCase())}</div></div>
+          <span class="pbadge">${err ? "Nu a mers" : r.status === "nou" ? "Așteaptă serverul" : "Se pregătește…"}</span></div>
+          <div class="tt">${esc(name)}</div><div class="ts">${err ? "Atinge pentru detalii" : r.status === "nou" ? "Trimisă" : "Textul vine în curând"}</div></button>`; }).join("")}</div>` : "";
+    if(!ids.length){ $("#libGrid").innerHTML = prepHTML + (prep.length ? "" : `<div class="empty">Nimic aici.</div>`); bindPrep(); return; }
     if(libFilter === "all" && !q && cols.length > 1){
       // one shelf per collection
-      $("#libGrid").innerHTML = cols.map(c => { const list = ids.filter(id => collectionOf(id) === c); if(!list.length) return "";
+      $("#libGrid").innerHTML = prepHTML + cols.map(c => { const list = ids.filter(id => collectionOf(id) === c); if(!list.length) return "";
         return `<h2 class="sec">${esc(c)} <a href="#" data-col="${esc(c)}">${list.length} ${list.length === 1 ? "carte" : "cărți"}</a></h2><div class="shelf">${list.map(tile).join("")}</div>`; }).join("");
       $("#libGrid").querySelectorAll("[data-col]").forEach(x => x.onclick = ev => { ev.preventDefault(); libFilter = "c:" + x.dataset.col; viewLibrary(); });
     } else {
-      $("#libGrid").innerHTML = `<div class="grid">${ids.map(tile).join("")}</div>`;
+      $("#libGrid").innerHTML = prepHTML + `<div class="grid">${ids.map(tile).join("")}</div>`;
     }
+    bindPrep();
   };
+  const bindPrep = () => $("#libGrid").querySelectorAll("[data-add]").forEach(el => el.onclick = () => requestSheet(el.dataset.add));
   root.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { libFilter = b.dataset.f; viewLibrary(); });
   $("#q").addEventListener("input", e => { libQuery = e.target.value; draw(); });
   const ab = $("#addBook"); if(ab) ab.onclick = addBookSheet;
@@ -1336,6 +1393,9 @@ function viewBook(id){
     <div class="dlrow">${B.mode === "local" ? "" : bookDownloaded(id)
       ? `<span style="color:var(--ok);display:flex;gap:6px;align-items:center">${icon("check")} Descărcată: merge și fără internet</span>`
       : `<button class="btn plain" id="bDl" style="margin:0">${icon("dl")} Descarcă pentru ${textOnly ? "citit" : "ascultare"} fără internet</button>`}</div>
+    ${voiceLeft(id) ? `<div class="vbanner">${icon("wave")}<span><b>Vocea se generează: ${voiceLeft(id).ready} din ${voiceLeft(id).total} capitole.</b> Poți citi deja tot textul.
+      <div class="bar"><i style="width:${Math.round(voiceLeft(id).ready / voiceLeft(id).total * 100)}%"></i></div></span>
+      ${addOfBook(id) ? `<button class="chip" id="bStatus">Detalii</button>` : ""}</div>` : ""}
     <h2 class="sec">Capitole</h2>
     <div class="chs">${chs.map((c, i) => chapterRow(c, i)).join("")}</div>
     ${bookmarksOf(id).length ? `<h2 class="sec">Semne de carte</h2><div class="set" id="bmList">${bookmarkRows(id)}</div>` : ""}
@@ -1346,6 +1406,7 @@ function viewBook(id){
     if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
     playChapter(id, r.ch.id, {t: r.t, open: true}); };
   $("#bMore").onclick = () => moreSheet(id);
+  const bs = $("#bStatus"); if(bs) bs.onclick = () => { const a = addOfBook(id); if(a) requestSheet(a[0]); };
   const dlb = $("#bDl"); if(dlb) dlb.onclick = async () => {
     if(!navigator.onLine){ toast("Pentru descărcare ai nevoie de internet"); return; }
     dlb.disabled = true;
@@ -1767,7 +1828,8 @@ async function addBookSheet(){
     const st = {nou: ["așteaptă", ""], lucru: ["în lucru", ""], gata: ["gata", "ok"], eroare: ["eroare", "err"]};
     const tg = (id, title, sub, on) => `<label class="tg"><span><b>${title}</b><small>${sub}</small></span><input type="checkbox" class="switch" id="${id}" ${on ? "checked" : ""}></label>`;
     $("#sheetBody").innerHTML = `<div class="addhead"><h3>Adaugă o carte</h3>
-        <span class="srvpill ${on ? "on" : ""}"><i></i>${on ? (srv.busy ? `Server pornit · ${srv.busy} în lucru` : "Server pornit") : "Server oprit"}</span></div>
+        <span style="display:flex;gap:8px;align-items:center"><span class="srvpill ${on ? "on" : ""}"><i></i>${on ? (srv.busy ? `Server pornit · ${srv.busy} în lucru` : "Server pornit") : "Server oprit"}</span>
+        <button class="sheetx" id="addX" style="position:static" aria-label="Închide">${icon("x")}</button></span></div>
       ${on ? "" : `<p class="fine" style="margin:-6px 4px 12px">Cererea intră în lucru când pornește serverul.</p>`}
       <div class="seg2"><button data-m="file" class="${mode === "file" ? "on" : ""}">Fișier</button><button data-m="link" class="${mode === "link" ? "on" : ""}">Link</button></div>
       ${mode === "file" ? `<label class="drop ${file ? "has" : ""}"><span class="dic">${icon(file ? "check" : "plus")}</span>
@@ -1794,11 +1856,13 @@ async function addBookSheet(){
       <button class="btn primary" id="sendBook" style="width:100%" ${sending ? "disabled" : ""}>Trimite</button>
       ${USER.admin ? "" : `<p class="fine" style="text-align:center">Cartea apare doar în biblioteca ta.</p>`}
       ${list.length ? `<h4 class="sub">${USER.admin ? "Cereri recente" : "Cererile tale"}</h4><div class="group">` + list.map(([k, r]) => { const x = st[r.status] || [r.status, ""];
-        return `<div class="req"><span style="min-width:0"><b>${esc(r.book || r.title || r.name || r.url || "Carte")}</b><small>${esc(r.msg || (r.status === "nou" ? "Așteaptă serverul" : ""))}</small></span><span class="pill ${x[1]}">${x[0]}</span></div>`; }).join("") + `</div>` : ""}`;
+        return `<div class="req" data-rq="${esc(k)}"><span style="min-width:0"><b>${esc(r.book || r.title || r.name || r.url || "Carte")}</b><small>${esc(r.msg || (r.status === "nou" ? "Așteaptă serverul" : ""))}</small></span><span class="pill ${x[1]}">${x[0]}</span></div>`; }).join("") + `</div>` : ""}`;
     $("#sheetBody").querySelectorAll("[data-m]").forEach(b => b.onclick = () => { remember(); stopSample(); mode = b.dataset.m; paint(); });
     const fi = $("#bookFile"); if(fi) fi.onchange = () => { remember(); file = fi.files[0] || null;
       if(file && !keep.bookTitle) keep.bookTitle = file.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim(); paint(); };
     $("#sendBook").onclick = send;
+    $("#addX").onclick = closeSheet;
+    $("#sheetBody").querySelectorAll("[data-rq]").forEach(el => el.onclick = () => { ADDS = {...ADDS, ...reqs}; requestSheet(el.dataset.rq); });
     $("#wantAudio").onchange = () => { wantAudio = $("#wantAudio").checked; $("#voicePick").classList.toggle("off", !wantAudio); if(!wantAudio) stopSample(); };
     $("#sheetBody").querySelectorAll("[data-sl]").forEach(b => b.onclick = () => { stopSample(); sLang = b.dataset.sl;
       $("#sheetBody").querySelectorAll("[data-sl]").forEach(x => x.classList.toggle("on", x === b)); });
@@ -1840,11 +1904,66 @@ async function addBookSheet(){
         file = null; keep.bookTitle = keep.bookAuthor = "";
       }
       toast(serverOn(srv) ? "Trimisă. Serverul o preia în cel mult un minut." : "Trimisă. Serverul o preia când pornește.");
-      sending = false; await load(); paint();
+      sending = false; await load(); ADDS = reqs || {}; closeSheet(); location.hash = "#/library"; render(); pollAdds();
     }catch(e){ sending = false; btn.disabled = false; btn.textContent = "Trimite"; toast("Nu s-a putut trimite: " + (e.code || e.message)); }
   };
   const load = async () => { try{ [reqs, srv] = await Promise.all([B.bookRequests().catch(() => ({})), B.server ? B.server() : null]); }catch(e){} };
   sheet(`<p style="color:var(--muted)">Se încarcă…</p>`); await load(); paint();
+}
+
+/* books the person sent: kept here, shown in the library while they are being made */
+let ADDS = {};
+const myAdds = () => Object.entries(ADDS || {}).filter(([, r]) => r && (!r.by || r.by === USER.uid));
+const addName = r => r.book || r.title || r.name || r.url || "Carte";
+const addActive = r => r.status === "nou" || r.status === "lucru";
+const bookOfAdd = r => { const n = (r.book || "").trim().toLowerCase(); return n ? Object.keys(BOOKS).find(id => (BOOKS[id].title || "").trim().toLowerCase() === n) : null; };
+const addOfBook = id => { const t = (BOOKS[id]?.title || "").trim().toLowerCase(); const e = myAdds().find(([, r]) => (r.book || "").trim().toLowerCase() === t); return e || null; };
+let addsT;
+async function pollAdds(){
+  clearTimeout(addsT);
+  if(!USER || !(USER.admin || USER.canAdd) || !B || B.mode === "local" || !B.bookRequests) return;
+  let reqs; try{ reqs = await B.bookRequests(); }catch(e){ return; }
+  const before = JSON.stringify(myAdds().map(([k, r]) => [k, r.status, r.msg, r.book]));
+  ADDS = reqs || {};
+  const after = JSON.stringify(myAdds().map(([k, r]) => [k, r.status, r.msg, r.book]));
+  if(before !== after){
+    // a book appeared or moved on: fetch the library again, quietly
+    try{ const b = await B.books(); if(b) BOOKS = b; saveCache(); }catch(e){}
+    const h = location.hash || "#/home";
+    if(!$("#sheet").classList.contains("open") && (h.startsWith("#/library") || h.startsWith("#/home") || h.startsWith("#/book/"))) render();
+  }
+  const busy = myAdds().some(([, r]) => addActive(r)) || Object.values(BOOKS).some(b => b.own && Object.values(b.chapters || {}).some(c => c.pending && !c.textOnly));
+  if(busy && document.visibilityState === "visible") addsT = setTimeout(pollAdds, 20000);
+}
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") pollAdds(); });
+
+function requestSheet(rid){
+  const r = ADDS[rid]; if(!r) return;
+  const bid = bookOfAdd(r), voice = r.audio !== false;
+  const stage = r.status === "eroare" ? -1 : r.status === "anulat" ? -2 : r.status === "gata" ? 3 : r.status === "lucru" ? (bid ? 2 : 1) : 0;
+  const step = (i, label) => `<div class="st ${stage > i ? "done" : stage === i ? "now" : ""}"><i>${stage > i ? "✓" : i + 1}</i>${label}</div>`;
+  sheet(`<div class="reqsheet"><button class="sheetx" id="rqX" aria-label="Închide">${icon("x")}</button>
+    <div style="color:var(--muted);font-size:13px">Cererea ta</div><div class="big">${esc(addName(r))}</div>
+    ${stage === -1 ? `<p style="color:#e5484d;margin:6px 0 12px">${esc(r.msg || "Nu a mers.")}</p>`
+      : stage === -2 ? `<p style="color:var(--muted);margin:6px 0 12px">Ai anulat această cerere.</p>`
+      : `<div class="steps">${step(0, "Trimisă · așteaptă serverul")}${step(1, "Serverul pregătește textul")}${voice ? step(2, "Textul se poate citi · vocea se generează") : step(2, "Textul se poate citi")}${step(3, "Gata")}</div>
+      ${r.msg ? `<p style="color:var(--muted);font-size:14px;margin:0 0 12px">${esc(r.msg)}</p>` : ""}`}
+    ${bid ? `<button class="btn primary" id="rqOpen" style="width:100%">${icon("text")} Deschide cartea</button>` : ""}
+    ${addActive(r) ? (voice && r.status === "lucru" ? `<button class="btn plain" id="rqVoice" style="width:100%">Oprește vocea, păstrează textul</button>` : "")
+      + `<button class="btn plain" id="rqAll" style="width:100%;color:#e5484d">Anulează cererea</button>`
+      : !bid ? `<button class="btn plain" id="rqHide" style="width:100%">Ascunde din bibliotecă</button>` : ""}</div>`, el => {
+    $("#rqX").onclick = closeSheet;
+    const o = $("#rqOpen"); if(o) o.onclick = () => { closeSheet(); location.hash = `#/book/${encodeURIComponent(bid)}`; };
+    const cancel = async mode => {
+      if(mode === "all" && !confirm(bid ? "Anulezi cererea? Cartea se șterge din biblioteca ta." : "Anulezi cererea?")) return;
+      try{ await B.cancelRequest(rid, mode); r.msg = mode === "voice" ? "Se oprește vocea…" : "Se anulează…"; closeSheet();
+        toast(mode === "voice" ? "Vocea se oprește. Textul rămâne." : "Cererea se anulează în cel mult un minut."); setTimeout(pollAdds, 4000); }
+      catch(e){ toast("Nu s-a putut anula: " + (e.code || e.message)); }
+    };
+    const hd = $("#rqHide"); if(hd) hd.onclick = () => { const h = store.get("ab_hidden_adds", {}) || {}; h[rid] = 1; store.set("ab_hidden_adds", h); closeSheet(); render(); };
+    const v = $("#rqVoice"); if(v) v.onclick = () => cancel("voice");
+    const a = $("#rqAll"); if(a) a.onclick = () => cancel("all");
+  });
 }
 
 /* tell people when a book they asked for is ready */
@@ -1858,6 +1977,7 @@ async function checkReady(){
       seen[k] = 1; if(!r.by || r.by === USER.uid) ready.push(r.book || r.title || r.name || "Cartea");
     }
     store.set("ab_seen_ready", seen);
+    pollAdds();
     if(ready.length && !first){ toast(ready.length === 1 ? `„${ready[0]}” e gata în bibliotecă` : `${ready.length} cărți noi sunt gata în bibliotecă`); refreshAll && refreshAll(); }
   }catch(e){}
 }
@@ -1868,16 +1988,17 @@ async function drawAdmin(){
   const [req, ok, ups] = await Promise.all([B.requests(), B.allowedList(), B.uploaders ? B.uploaders().catch(() => ({})) : {}]).catch(() => [{}, {}, {}]);
   const person = (p, uid) => `<span style="min-width:0"><b style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name || p.email || uid)}</b>
     <small style="color:var(--muted)">${esc(p.email || "")}</small></span>`;
-  const rows = Object.entries(req).map(([uid, p]) => `<div class="setrow">${person(p, uid)}<span style="display:flex;gap:8px;flex:none">
-      <button class="chip" data-deny="${esc(uid)}">Refuz</button><button class="chip on" data-ok="${esc(uid)}">Aprobă</button></span></div>`).join("")
-    + Object.entries(ok).map(([uid, p]) => `<div class="setrow">${person(p, uid)}<span style="display:flex;gap:8px;flex:none">
-      <button class="chip ${ups[uid] ? "on up" : ""}" data-up="${esc(uid)}" aria-pressed="${!!ups[uid]}">${ups[uid] ? "Adaugă cărți ✓" : "Adaugă cărți"}</button>
-      <button class="chip" data-rev="${esc(uid)}">Scoate</button></span></div>`).join("")
-    + (Object.keys(ok).length ? `<div class="setrow"><span style="color:var(--muted);font-size:13px">„Adaugă cărți”: persoana poate trimite PDF, Word, text sau linkuri. Cărțile ei apar doar la ea.</span></div>` : "");
+  const head = (p, uid, extra) => `<div class="ph"><span class="av" style="background:hsl(${hueOf(p.name || p.email || uid)} 45% 45%)">${esc(((p.name || p.email || "?").trim()[0] || "?").toUpperCase())}</span>
+      <span class="pn"><b>${esc(p.name || p.email || uid)}</b><small>${esc(p.email || "")}</small></span>${extra}</div>`;
+  const rows = Object.entries(req).map(([uid, p]) => `<div class="person">${head(p, uid, "")}
+      <div class="acts"><button class="chip on" data-ok="${esc(uid)}">Aprobă</button><button class="chip" data-deny="${esc(uid)}">Refuz</button></div></div>`).join("")
+    + Object.entries(ok).map(([uid, p]) => `<div class="person">${head(p, uid, `<button class="rm" data-rev="${esc(uid)}">Scoate</button>`)}
+      <label class="tg"><span><b>Poate adăuga cărți</b><small>PDF, Word, text sau linkuri · apar doar la ea</small></span>
+      <input type="checkbox" class="switch" data-up="${esc(uid)}" ${ups[uid] ? "checked" : ""}></label></div>`).join("");
   box.innerHTML = rows || `<div class="setrow"><span style="color:var(--muted);font-size:14px">Când cineva își face cont, cererea apare aici. Trimite-le linkul aplicației.</span></div>`;
   box.querySelectorAll("[data-ok]").forEach(b => b.onclick = async () => { await B.approve(b.dataset.ok, req[b.dataset.ok]); toast("Acces aprobat"); drawAdmin(); });
   box.querySelectorAll("[data-deny]").forEach(b => b.onclick = async () => { await B.deny(b.dataset.deny); drawAdmin(); });
-  box.querySelectorAll("[data-up]").forEach(b => b.onclick = async () => { const on = !ups[b.dataset.up];
+  box.querySelectorAll("[data-up]").forEach(b => b.onchange = async () => { const on = b.checked;
     try{ await B.setUploader(b.dataset.up, on); toast(on ? "Poate adăuga cărți" : "Nu mai poate adăuga cărți"); }catch(e){ toast("Nu s-a putut schimba"); } drawAdmin(); });
   box.querySelectorAll("[data-rev]").forEach(b => b.onclick = async () => { if(!confirm("Scoți accesul acestei persoane?")) return; await B.revoke(b.dataset.rev); drawAdmin(); });
 }
