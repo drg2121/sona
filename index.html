@@ -38,8 +38,8 @@ svg.i.fill{fill:currentColor;stroke:none}
 .appbar{position:sticky;top:0;z-index:15;display:flex;align-items:center;justify-content:space-between;gap:12px;
   margin:0 -18px 6px;padding:calc(var(--safe-t) + 10px) 18px 10px;background:color-mix(in srgb,var(--bg) 85%,transparent);
   backdrop-filter:saturate(1.4) blur(18px);-webkit-backdrop-filter:saturate(1.4) blur(18px)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:750;font-size:21px;letter-spacing:-.02em;color:var(--ink);text-decoration:none}
-.brand img{width:32px;height:32px;border-radius:9px;box-shadow:0 2px 8px color-mix(in srgb,var(--brand) 35%,transparent)}
+.brand{display:flex;align-items:center;gap:12px;font-weight:780;font-size:26px;letter-spacing:-.03em;color:var(--ink);text-decoration:none}
+.brand img{width:42px;height:42px;border-radius:12px;box-shadow:0 2px 8px color-mix(in srgb,var(--brand) 35%,transparent)}
 h1.big{font:700 30px/1.15 var(--serif);margin:8px 0 18px;letter-spacing:-.01em}
 .sub2{color:var(--muted);font-size:15px;margin:-12px 0 18px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
@@ -68,7 +68,9 @@ nav.tabs a.on{color:var(--accent)}
 .cover::after{content:"";position:absolute;left:0;top:0;bottom:0;width:7%;background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(255,255,255,.08) 70%,transparent)}
 .cover .ct{position:absolute;inset:14% 13% 12%;display:flex;flex-direction:column;justify-content:space-between;text-align:center}
 .cover .ctitle{font:700 1em/1.12 var(--serif);text-wrap:balance;text-shadow:0 1px 8px rgba(0,0,0,.35)}
-.cover .cauth{font-size:.48em;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.cover .cauth{font-size:.48em;letter-spacing:.1em;text-transform:uppercase;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero .cover .cauth,.mini .cover .cauth,.hrow .cover .cauth{display:none}
+.hero .cover .ct,.mini .cover .ct,.hrow .cover .ct{justify-content:center;gap:12%}
 .cover .cmark{display:flex;justify-content:center;opacity:.9}
 .cover .cmark svg{width:1.1em;height:1.1em}
 
@@ -84,6 +86,18 @@ nav.tabs a.on{color:var(--accent)}
 .playbig{width:54px;height:54px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none;box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent)}
 .playbig svg{width:26px;height:26px}
 
+.hero{--h:260;position:relative;display:flex;gap:16px;align-items:center;padding:16px;border-radius:24px;color:#fff;overflow:hidden;margin-top:6px;
+  background:radial-gradient(120% 90% at 100% 0%,hsl(calc(var(--h) + 25) 60% 55% / .45),transparent 60%),linear-gradient(140deg,hsl(var(--h) 45% 34%),hsl(calc(var(--h) + 30) 50% 15%));
+  box-shadow:0 14px 34px hsl(var(--h) 50% 20% / .35)}
+.hero .cover{width:96px;font-size:12px;flex:none}
+.hero-meta{flex:1;min-width:0}
+.hero .k{font-size:12px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.hero .t{display:block;font:700 21px/1.15 var(--serif);color:#fff;text-decoration:none;margin:4px 0 3px}
+.hero .c{font-size:14px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero .c2{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero .bar{background:rgba(255,255,255,.22);margin-top:10px}
+.hero .bar i{background:#fff}
+.hero .playbig{background:#fff;color:hsl(var(--h) 45% 30%);box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
 .shelf::-webkit-scrollbar{display:none}
 .shelf .tile{width:118px;flex:none;scroll-snap-align:start}
@@ -589,7 +603,7 @@ function renderPlayState(){
   $("#miniPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#pPlay").innerHTML = icon(playing ? "pause" : "play", true);
   $("#pPlay").setAttribute("aria-label", playing ? "Pauză" : "Redă");
-  const cp = $("#contPlay"); if(cp && ST.last && ST.last.book === PL.book) cp.innerHTML = icon(playing ? "pause" : "play", true);
+  if($("#contPlay") && (location.hash || "#/home").startsWith("#/home")) render();
   const bp = $("#bPlay"); if(bp && location.hash.startsWith("#/book/") && decodeURIComponent(location.hash.slice(7)) === PL.book) render();
   try{ navigator.mediaSession.playbackState = playing ? "playing" : "paused"; }catch(e){}
 }
@@ -601,6 +615,11 @@ function renderProgress(){
   $("#tCur").textContent = fmtClock(seeking ? $("#seek").value/1000*d : t);
   $("#tLeft").textContent = "-" + fmtClock(d - (seeking ? $("#seek").value/1000*d : t));
   $("#miniProg").style.width = (d ? t/d*100 : 0) + "%";
+  if(PL.ch && Math.floor(t) % 5 === 0){
+    const i = PL.list.findIndex(c => c.id === PL.ch.id);
+    const left = Math.max(0, d - t) + PL.list.slice(i + 1).reduce((s, c) => s + (c.dur || 0), 0);
+    $("#pLabel").textContent = `Capitolul ${i + 1} din ${PL.list.length} · ${fmtDur(left)} rămase din carte`;
+  }
   if(Math.floor(t) % 5 === 0) mediaPos();
 }
 
@@ -703,28 +722,51 @@ function appbar(left){
   return `<header class="appbar">${left || `<a class="brand" href="#/home"><img src="icon-192.png" alt="">Sona</a>`}<a class="avatar" href="#/profile" aria-label="Profil">${initial}</a></header>`;
 }
 const firstName = () => ((USER && USER.name) || "").trim().split(/\s+/)[0];
+function chapterRow(c, i){
+  const ps = posOf(c.id), done = chapterDone(c), cur = PL.ch && PL.ch.id === c.id;
+  const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
+  return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("wave") : i+1}</span>
+    <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
+    ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`;
+}
 function bookIds(){ return Object.keys(BOOKS).sort((a, b) => (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
 
 function viewHome(){
   const ids = bookIds();
-  const last = ST.last && BOOKS[ST.last.book] ? ST.last.book : (ids[0] || null);
-  const started = last && bookProgress(last).started;
-  const inProgress = ids.filter(id => { const p = bookProgress(id); return p.started && p.pct < .995 && id !== last; });
-  const favs = ids.filter(id => (ST.fav||{})[id]);
-  let cont = "";
-  if(last){ const r = resumePoint(last), p = bookProgress(last);
-    cont = `<div class="continue">${coverHTML(last)}<div class="meta"><div class="k">${started ? "Continuă" : "Începe"}</div><div class="t">${esc(BOOKS[last].title)}</div>
-      <div class="c">${started ? `${esc(r.ch.title)} · rămas ${fmtDur(p.left)}` : `${esc(BOOKS[last].author || "")}${BOOKS[last].author ? " · " : ""}${fmtDur(p.total)}`}</div><div class="bar"><i style="width:${p.pct*100}%"></i></div></div>
-      <button class="playbig" id="contPlay" aria-label="Continuă">${icon(PL.book === last && !audio.paused ? "pause" : "play", true)}</button></div>`; }
-  root.innerHTML = `<div class="view">
-    ${appbar()}<div style="height:8px"></div>
-    ${cont}
+  if(!ids.length){
+    root.innerHTML = `<div class="view">${appbar()}<div class="empty" style="margin-top:16px">Biblioteca e goală. Cărțile apar aici după ce le publici din Studio.</div></div>`;
+    return;
+  }
+  const lastOk = ST.last && BOOKS[ST.last.book] && bookProgress(ST.last.book).pct < .995;
+  const hero = lastOk ? ST.last.book : (ids.find(id => { const q = bookProgress(id); return q.started && q.pct < .995; }) || ids[0]);
+  const b = BOOKS[hero], p = bookProgress(hero), r = resumePoint(hero), chs = chaptersOf(hero);
+  const idx = Math.max(0, chs.findIndex(c => c.id === r.ch.id));
+  const next = chs.slice(idx, idx + 4);
+  const others = ids.filter(id => id !== hero);
+  const inProgress = others.filter(id => { const q = bookProgress(id); return q.started && q.pct < .995; });
+  const favs = others.filter(id => (ST.fav||{})[id] && !inProgress.includes(id));
+  const rest = others.filter(id => !inProgress.includes(id) && !favs.includes(id));
+  const playing = PL.book === hero && !audio.paused;
+  const link = `#/book/${encodeURIComponent(hero)}`;
+  root.innerHTML = `<div class="view">${appbar()}
+    <section class="hero" style="--h:${b.hue ?? hueOf(b.title)}">
+      <a href="${link}" aria-label="Deschide cartea">${coverHTML(hero)}</a>
+      <div class="hero-meta">
+        <div class="k">${p.started ? "Continuă" : "Începe"}</div>
+        <a class="t" href="${link}">${esc(b.title)}</a>
+        ${b.author ? `<div class="c">${esc(b.author)}</div>` : ""}
+        ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="c2">rămas ${fmtDur(p.left)}</div>`
+                    : `<div class="c2">${chs.length} ${chs.length === 1 ? "capitol" : "capitole"} · ${fmtDur(p.total)}</div>`}
+      </div>
+      <button class="playbig" id="contPlay" aria-label="${playing ? "Pauză" : "Redă"}">${icon(playing ? "pause" : "play", true)}</button>
+    </section>
+    ${next.length ? `<h2 class="sec">${p.started ? "Urmează" : "Capitole"} <a href="${link}">Toate</a></h2><div class="chs">${next.map(c => chapterRow(c, chs.indexOf(c))).join("")}</div>` : ""}
     ${inProgress.length ? `<h2 class="sec">În curs</h2><div class="shelf">${inProgress.map(tile).join("")}</div>` : ""}
     ${favs.length ? `<h2 class="sec">Favorite</h2><div class="shelf">${favs.map(tile).join("")}</div>` : ""}
-    <h2 class="sec">Adăugate recent <a href="#/library">Toate</a></h2>
-    ${ids.length ? `<div class="shelf">${ids.slice(0, 10).map(tile).join("")}</div>` : `<div class="empty">Încă nu e nicio carte. Adaug-o din Studio, de pe Mac.</div>`}
+    ${rest.length ? `<h2 class="sec">Din bibliotecă <a href="#/library">Toate</a></h2><div class="shelf">${rest.slice(0, 10).map(tile).join("")}</div>` : ""}
   </div>`;
-  const cp = $("#contPlay"); if(cp) cp.onclick = () => { if(PL.book === last && audio.src){ togglePlay(); render(); } else { const r = resumePoint(last); playChapter(last, r.ch.id, {t: r.t}); setTimeout(render, 300); } };
+  $("#contPlay").onclick = () => { if(PL.book === hero && audio.src && PL.ch && PL.ch.id === r.ch.id){ togglePlay(); return; } playChapter(hero, r.ch.id, {t: r.t}); };
+  root.querySelectorAll("[data-c]").forEach(el => el.onclick = () => playChapter(hero, el.dataset.c, {open: true}));
 }
 
 let libFilter = "all", libQuery = "";
@@ -758,11 +800,7 @@ function viewBook(id){
       <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button></div>
     ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="progline">${p.pct >= .995 ? "Ai terminat cartea" : `${Math.round(p.pct*100)}% ascultat · rămas ${fmtDur(p.left)}`}</div>` : ""}
     <h2 class="sec">Capitole</h2>
-    <div class="chs">${chs.map((c, i) => { const ps = posOf(c.id), done = chapterDone(c), cur = PL.ch && PL.ch.id === c.id;
-      const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
-      return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("wave") : i+1}</span>
-        <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
-        ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`; }).join("")}</div></div>`;
+    <div class="chs">${chs.map((c, i) => chapterRow(c, i)).join("")}</div></div>`;
   $("#bPlay").onclick = () => { if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
     playChapter(id, r.ch.id, {t: r.t, open: true}); };
   $("#bFav").onclick = () => toggleFav(id);
