@@ -209,6 +209,9 @@ nav.tabs a.on{color:var(--accent)}
 .onb .dots{display:flex;justify-content:center;gap:8px;margin:18px 0}
 .onb .dots i{width:8px;height:8px;border-radius:50%;background:var(--line);transition:.2s}
 .onb .dots i.on{background:var(--accent);width:22px;border-radius:9px}
+.readpage{padding:0 2px 20px;-webkit-mask-image:none;mask-image:none;overflow:visible}
+.readpage p{color:var(--ink);margin:0 0 18px}
+.readpage h3{color:var(--accent)}
 .shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
 .shelf::-webkit-scrollbar{display:none}
 .shelf .tile{width:118px;flex:none;scroll-snap-align:start}
@@ -602,13 +605,14 @@ function chaptersOf(id){
 }
 function posOf(cid){ return (ST.pos || {})[cid] || null; }
 function chapterDone(c){ const p = posOf(c.id); return !!(p && (p.done || (c.dur && p.t >= c.dur - 3))); }
+const playable = id => chaptersOf(id).filter(c => !c.pending);
 function bookProgress(id){
-  const chs = chaptersOf(id); const total = chs.reduce((s,c)=>s+(c.dur||0),0) || 1;
+  const chs = playable(id); const total = chs.reduce((s,c)=>s+(c.dur||0),0) || 1;
   const heard = chs.reduce((s,c)=>{ const p = posOf(c.id); return s + (chapterDone(c) ? (c.dur||0) : Math.min(p?.t||0, c.dur||0)); }, 0);
   return {pct: Math.min(1, heard/total), left: Math.max(0, total - heard), total, started: heard > 5};
 }
 function resumePoint(id){
-  const chs = chaptersOf(id); if(!chs.length) return null;
+  const chs = playable(id).length ? playable(id) : chaptersOf(id); if(!chs.length) return null;
   const last = ST.last && ST.last.book === id ? chs.find(c => c.id === ST.last.ch) : null;
   if(last && !chapterDone(last)) return {ch: last, t: posOf(last.id)?.t || 0};
   if(last){ const i = chs.indexOf(last); if(chs[i+1]) return {ch: chs[i+1], t: posOf(chs[i+1].id)?.t || 0}; }
@@ -692,7 +696,9 @@ const PL = {book: null, ch: null, list: [], cues: [], spans: [], histId: null, h
             sleepAt: 0, sleepEnd: false, nextUrl: null, textOn: store.get("ab_text", false), userScroll: 0};
 
 async function playChapter(bookId, chId, {t = null, autoplay = true, open = false} = {}){
-  const list = chaptersOf(bookId); const ch = list.find(c => c.id === chId) || list[0]; if(!ch) return;
+  const all = chaptersOf(bookId); const asked = all.find(c => c.id === chId) || all[0]; if(!asked) return;
+  if(asked.pending){ location.hash = `#/read/${encodeURIComponent(bookId)}/${encodeURIComponent(asked.id)}`; return; }
+  const list = all.filter(c => !c.pending); const ch = asked;
   if(autoplay) store.set("ab_mini_closed", false);
   const same = PL.ch && PL.ch.id === ch.id && audio.src;
   PL.book = bookId; PL.list = list; PL.ch = ch; PL.histId = null;
@@ -985,6 +991,8 @@ function bookmarkSheet(){
 }
 
 function chapterRow(c, i){
+  if(c.pending) return `<button class="chrow" data-c="${esc(c.id)}"><span class="n">${i+1}</span>
+    <span class="x"><b>${esc(c.title)}</b><small>Doar text acum · audio în curând</small></span><span class="pill">${icon("text")}</span></button>`;
   const ps = posOf(c.id), done = chapterDone(c), cur = PL.ch && PL.ch.id === c.id;
   const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
   return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("wave") : i+1}</span>
@@ -1245,6 +1253,29 @@ async function resetBook(id, keepBookmarks){
   render();
 }
 
+async function viewReader(bookId, cid){
+  const b = BOOKS[bookId], chs = chaptersOf(bookId), ch = chs.find(c => c.id === cid);
+  if(!b || !ch){ location.hash = "#/library"; return; }
+  const i = chs.indexOf(ch), prev = chs[i - 1], next = chs[i + 1];
+  root.innerHTML = `<div class="view">${appbar(`<button class="back" onclick="location.hash='#/book/${encodeURIComponent(bookId)}'" aria-label="Înapoi">${icon("left")}</button>`)}
+    <div style="text-align:center;margin:6px 0 18px"><div style="font-size:13px;color:var(--muted)">${esc(b.title)} · capitolul ${i + 1} din ${chs.length}</div>
+      <h1 class="big" style="margin:6px 0 10px">${esc(ch.title)}</h1>
+      ${ch.pending ? `<span class="pill">${icon("wave")} Audio în curând</span>` : `<button class="btn primary" id="rdPlay" style="max-width:260px;margin:0 auto">${icon("play", true)} Ascultă capitolul</button>`}</div>
+    <article class="reader readpage" id="rdText"><p style="color:var(--muted)">Se încarcă textul…</p></article>
+    <div class="actions" style="margin-top:24px">${prev ? `<button class="btn plain" id="rdPrev" style="margin:0">${icon("left")} Anterior</button>` : ""}
+      ${next ? `<button class="btn plain" id="rdNext" style="margin:0">Următorul ›</button>` : ""}</div></div>`;
+  const go = c => c.pending ? (location.hash = `#/read/${encodeURIComponent(bookId)}/${encodeURIComponent(c.id)}`) : playChapter(bookId, c.id, {open: true});
+  if($("#rdPrev")) $("#rdPrev").onclick = () => go(prev);
+  if($("#rdNext")) $("#rdNext").onclick = () => go(next);
+  if($("#rdPlay")) $("#rdPlay").onclick = () => playChapter(bookId, ch.id, {open: true});
+  try{
+    const data = await B.transcript(bookId, ch);
+    $("#rdText").innerHTML = (data.blocks || []).map(bl => { const t = bl.s.map(s => esc(s.o)).join(" ");
+      return bl.k === "h" ? `<h3>${t}</h3>` : `<p>${t}</p>`; }).join("");
+    $("#rdText").style.fontSize = prefs().textSize + "px";
+  }catch(e){ $("#rdText").innerHTML = `<p style="color:var(--muted)">Textul nu e disponibil acum.</p>`; }
+}
+
 function viewHistory(){
   const items = Object.entries(ST.history || {}).map(([k, v]) => ({k, ...v})).filter(h => BOOKS[h.book]).sort((a, b) => b.at - a.at).slice(0, 150);
   let html = "", lastDay = "";
@@ -1462,9 +1493,10 @@ async function refreshAll(){
    ===================================================================== */
 function render(){
   if(!USER) return;
-  const [ , tab = "home", arg] = (location.hash || "#/home").split("/");
-  document.querySelectorAll("nav.tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === tab || ((tab === "book" || tab === "daily") && a.dataset.tab === "library")));
+  const [ , tab = "home", arg, arg2] = (location.hash || "#/home").split("/");
+  document.querySelectorAll("nav.tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === tab || ((tab === "book" || tab === "daily" || tab === "read") && a.dataset.tab === "library")));
   if(tab === "library") viewLibrary(); else if(tab === "daily") viewDaily(); else if(tab === "book") viewBook(decodeURIComponent(arg || ""));
+  else if(tab === "read") viewReader(decodeURIComponent(arg || ""), decodeURIComponent(arg2 || ""));
   else if(tab === "history") viewHistory(); else if(tab === "profile") viewProfile(); else viewHome();
 }
 window.addEventListener("hashchange", () => { closeSheet(); root.classList.add("anim"); render(); window.scrollTo(0, 0); setTimeout(() => root.classList.remove("anim"), 300); });
