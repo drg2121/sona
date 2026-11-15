@@ -1818,7 +1818,7 @@ const VOICE_OPTS = [
 let voiceSample = null, voiceSampleKey = "";
 function stopSample(){ if(voiceSample){ voiceSample.pause(); voiceSample = null; voiceSampleKey = ""; } document.querySelectorAll(".vo .vplay").forEach(b => b.innerHTML = icon("play", true)); }
 async function addBookSheet(){
-  let mode = "file", file = null, reqs = {}, srv = null, sending = false, voice = store.get("ab_voice", "M5"), sLang = "ro", wantAudio = true;
+  let mode = "file", file = null, reqs = {}, srv = null, sending = false, voice = store.get("ab_voice", "M5"), sLang = "ro", wantAudio = store.get("ab_want_audio", true);
   const keep = {};
   const remember = () => ["bookUrl", "bookTitle", "bookAuthor", "bookCol"].forEach(id => { const el = $("#" + id); if(el) keep[id] = el.value; });
   const val0 = id => esc(keep[id] || "");
@@ -1863,7 +1863,7 @@ async function addBookSheet(){
     $("#sendBook").onclick = send;
     $("#addX").onclick = closeSheet;
     $("#sheetBody").querySelectorAll("[data-rq]").forEach(el => el.onclick = () => { ADDS = {...ADDS, ...reqs}; requestSheet(el.dataset.rq); });
-    $("#wantAudio").onchange = () => { wantAudio = $("#wantAudio").checked; $("#voicePick").classList.toggle("off", !wantAudio); if(!wantAudio) stopSample(); };
+    $("#wantAudio").onchange = () => { wantAudio = $("#wantAudio").checked; store.set("ab_want_audio", wantAudio); $("#voicePick").classList.toggle("off", !wantAudio); if(!wantAudio) stopSample(); };
     $("#sheetBody").querySelectorAll("[data-sl]").forEach(b => b.onclick = () => { stopSample(); sLang = b.dataset.sl;
       $("#sheetBody").querySelectorAll("[data-sl]").forEach(x => x.classList.toggle("on", x === b)); });
     $("#sheetBody").querySelectorAll(".vo").forEach(el => el.onclick = e => {
