@@ -153,7 +153,7 @@ nav.tabs a.on{color:var(--accent)}
 .field{display:block;margin-bottom:12px}
 .field input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;outline:none}
 .field input:focus{border-color:var(--accent)}
-.login .btn{width:100%;margin-top:6px}
+.login .btn{width:100%;margin-top:6px;flex:none}
 .login .alt{text-align:center;margin-top:18px;font-size:15px;color:var(--muted)}
 .gbtn{width:100%;background:#fff;color:#1f1f1f;border:1px solid var(--line);gap:12px;margin-bottom:6px}
 .or{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:13px;margin:16px 0}
@@ -372,7 +372,7 @@ async function FirebaseBackend(cfg){
     async google(){
       const prov = new A.GoogleAuthProvider(); prov.setCustomParameters({prompt: "select_account"});
       try{ return wrapUser((await A.signInWithPopup(auth, prov)).user); }
-      catch(e){ if(["auth/popup-blocked","auth/operation-not-supported-in-this-environment"].includes(e.code)){ await A.signInWithRedirect(auth, prov); return null; } throw e; }
+      catch(e){ if(e.code === "auth/operation-not-supported-in-this-environment"){ await A.signInWithRedirect(auth, prov); return null; } throw e; }
     },
     async signUp(email, pass, name){ const c = await A.createUserWithEmailAndPassword(auth, email, pass);
       if(name) await A.updateProfile(c.user, {displayName: name}); return wrapUser(c.user); },
@@ -848,7 +848,8 @@ function viewLogin(){
 function authErr(e){
   const m = {"auth/invalid-credential":"Email sau parolă greșită.","auth/wrong-password":"Email sau parolă greșită.","auth/user-not-found":"Nu există cont cu acest email.",
     "auth/email-already-in-use":"Există deja un cont cu acest email. Intră în el.","auth/weak-password":"Parola trebuie să aibă cel puțin 6 caractere.",
-    "auth/invalid-email":"Emailul nu pare corect.","auth/network-request-failed":"Nu e conexiune la internet.","auth/too-many-requests":"Prea multe încercări. Mai încearcă peste câteva minute."};
+    "auth/invalid-email":"Emailul nu pare corect.","auth/network-request-failed":"Nu e conexiune la internet.","auth/too-many-requests":"Prea multe încercări. Mai încearcă peste câteva minute.",
+    "auth/popup-blocked":"Browserul a blocat fereastra Google. Permite ferestrele pop-up și apasă din nou."};
   return m[e.code] || e.message || String(e);
 }
 
