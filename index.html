@@ -64,6 +64,10 @@ nav.tabs a.on{color:var(--accent)}
   box-shadow:0 6px 18px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08)}
 .cover::before{content:"";position:absolute;inset:7%;border:1px solid rgba(255,255,255,.28);border-radius:4px}
 .cover::after{content:"";position:absolute;left:0;top:0;bottom:0;width:7%;background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(255,255,255,.08) 70%,transparent)}
+.cover.img{background:#e9e6df}
+.cover.img::before{display:none}
+.cover.img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cover.img::after{z-index:1}
 .cover .ct{position:absolute;inset:14% 13% 12%;display:flex;flex-direction:column;justify-content:space-between;text-align:center}
 .cover .ctitle{font:700 1em/1.12 var(--serif);text-wrap:balance;text-shadow:0 1px 8px rgba(0,0,0,.35)}
 .cover .cauth{font-size:.48em;letter-spacing:.1em;text-transform:uppercase;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -101,6 +105,7 @@ nav.tabs a.on{color:var(--accent)}
 .daily .ic{width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;color:#fff;
   background:linear-gradient(140deg,#e2a23a,#b8641a)}
 .daily .ic svg{width:24px;height:24px}
+.daily .dcv{width:44px;height:62px;border-radius:6px;object-fit:cover;flex:none;box-shadow:0 3px 10px rgba(0,0,0,.18)}
 .daily .x{flex:1;min-width:0}
 .daily .k{font-size:12px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:#c27a1c}
 .daily .dt{font-weight:650;font-size:15px;margin-top:1px}
@@ -514,12 +519,16 @@ async function save(path, value){ setPath(ST, path, value); try{ await B.write(p
    ===================================================================== */
 function coverHTML(id, extraClass = "", badge = ""){
   const b = BOOKS[id] || {title: "?"};
+  if(b.cover) return `<div class="cover img ${extraClass}" style="--h:${b.kind === "daily" ? 28 : (b.hue ?? hueOf(b.title))}">${badge}<img src="${esc(b.cover)}" alt="${esc(b.title)}" loading="lazy"></div>`;
+  if(b.kind === "daily") return `<div class="cover ${extraClass}" style="--h:28">${badge}
+    <div class="ct"><div class="cmark">${icon("sun")}</div><div class="ctitle">${esc(b.title)}</div><div class="cauth">Să examinăm Scripturile</div></div></div>`;
   return `<div class="cover ${extraClass}" style="--h:${b.hue ?? hueOf(b.title)}">${badge}
     <div class="ct"><div class="cmark">${icon("wave")}</div><div class="ctitle">${esc(b.title)}</div><div class="cauth">${esc(b.author || (b.lang === "ro" ? "carte audio" : "audiobook"))}</div></div></div>`;
 }
 const artCache = {};
 function coverArt(id){
   if(artCache[id]) return artCache[id];
+  if(BOOKS[id] && BOOKS[id].cover) return artCache[id] = BOOKS[id].cover;
   const b = BOOKS[id] || {title: "?"}; const h = b.hue ?? hueOf(b.title);
   const c = document.createElement("canvas"); c.width = c.height = 512; const g = c.getContext("2d");
   const gr = g.createLinearGradient(0, 0, 512, 512); gr.addColorStop(0, `hsl(${h} 48% 40%)`); gr.addColorStop(1, `hsl(${(h+30)%360} 55% 15%)`);
@@ -640,7 +649,7 @@ function updateNowPlaying(){
   $("#favV").innerHTML = icon("heart", !!(ST.fav||{})[PL.book]); $("#tFav").classList.toggle("on", !!(ST.fav||{})[PL.book]);
   if("mediaSession" in navigator){
     try{ navigator.mediaSession.metadata = new MediaMetadata({title: PL.ch.title, artist: isDaily(PL.book) ? "Textul zilei" : b.title, album: isDaily(PL.book) ? "Sona" : `Sona · capitolul ${idx} din ${PL.list.length}`,
-      artwork: [{src: coverArt(PL.book), sizes: "512x512", type: "image/png"}]}); }catch(e){}
+      artwork: [{src: coverArt(PL.book), sizes: BOOKS[PL.book].cover ? "300x429" : "512x512", type: BOOKS[PL.book].cover ? "image/jpeg" : "image/png"}]}); }catch(e){}
   }
   renderPlayState(); renderProgress();
 }
@@ -771,6 +780,9 @@ async function toggleFav(id){
 const root = $("#root");
 function tile(id){
   const b = BOOKS[id], p = bookProgress(id), fav = (ST.fav||{})[id];
+  if(b.kind === "daily"){ const d = dailyToday();
+    return `<a class="tile" href="#/book/${encodeURIComponent(id)}">${coverHTML(id, "", fav ? `<span class="badge">${icon("heart", true)}</span>` : "")}
+      <div class="tt">${esc(b.title)}</div><div class="ts">${d && d.book === id ? "Azi: " + esc(d.ch.title.split(", ").pop()) : chaptersOf(id).length + " zile"}</div></a>`; }
   return `<a class="tile" href="#/book/${encodeURIComponent(id)}">${coverHTML(id, "", fav ? `<span class="badge">${icon("heart", true)}</span>` : "")}
     <div class="tt">${esc(b.title)}</div><div class="ts">${p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
     ${p.started && p.pct < .995 ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div>` : ""}</a>`;
@@ -787,7 +799,7 @@ function chapterRow(c, i){
     <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
     ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`;
 }
-function bookIds(){ return Object.keys(BOOKS).filter(id => BOOKS[id].kind !== "daily").sort((a, b) => (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
+function bookIds(){ return Object.keys(BOOKS).sort((a, b) => (BOOKS[b].kind === "daily") - (BOOKS[a].kind === "daily") || (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
 const isDaily = id => !!(BOOKS[id] && BOOKS[id].kind === "daily");
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 function dailyDays(){
@@ -799,7 +811,8 @@ function dailyToday(){ const t = todayISO(), all = dailyDays(); return all.find(
 function dailyCard(){
   const d = dailyToday(); if(!d) return "";
   const playing = PL.ch && PL.ch.id === d.ch.id && !audio.paused;
-  return `<a class="daily" href="#/daily"><div class="ic">${icon("sun")}</div>
+  const cv = BOOKS[d.book] && BOOKS[d.book].cover;
+  return `<a class="daily" href="#/book/${encodeURIComponent(d.book)}">${cv ? `<img class="dcv" src="${esc(cv)}" alt="">` : `<div class="ic">${icon("sun")}</div>`}
     <div class="x"><div class="k">Textul zilei</div><div class="dt">${esc(d.ch.title)}</div>${d.ch.sub ? `<div class="ds">${esc(d.ch.sub)}</div>` : ""}</div>
     <button class="pp" id="dailyPlay" data-b="${esc(d.book)}" data-c="${esc(d.ch.id)}" aria-label="Ascultă textul zilei">${icon(playing ? "pause" : "play", true)}</button></a>`;
 }
@@ -817,12 +830,17 @@ function viewHome(){
     bindDaily(); return;
   }
   const lastOk = ST.last && BOOKS[ST.last.book] && !isDaily(ST.last.book) && bookProgress(ST.last.book).pct < .995;
-  const hero = lastOk ? ST.last.book : (ids.find(id => { const q = bookProgress(id); return q.started && q.pct < .995; }) || ids[0]);
+  const regular = ids.filter(id => !isDaily(id));
+  const hero = lastOk ? ST.last.book : (regular.find(id => { const q = bookProgress(id); return q.started && q.pct < .995; }) || regular[0] || null);
+  if(!hero){
+    root.innerHTML = `<div class="view">${appbar()}${dailyCard()}<h2 class="sec">Din bibliotecă</h2><div class="shelf">${ids.map(tile).join("")}</div></div>`;
+    bindDaily(); return;
+  }
   const b = BOOKS[hero], p = bookProgress(hero), r = resumePoint(hero), chs = chaptersOf(hero);
   const idx = Math.max(0, chs.findIndex(c => c.id === r.ch.id));
   const next = chs.slice(idx, idx + 4);
   const others = ids.filter(id => id !== hero);
-  const inProgress = others.filter(id => { const q = bookProgress(id); return q.started && q.pct < .995; });
+  const inProgress = others.filter(id => !isDaily(id) && (q => q.started && q.pct < .995)(bookProgress(id)));
   const favs = others.filter(id => (ST.fav||{})[id] && !inProgress.includes(id));
   const rest = others.filter(id => !inProgress.includes(id) && !favs.includes(id));
   const playing = PL.book === hero && !audio.paused;
@@ -851,26 +869,34 @@ function viewHome(){
 }
 
 let dailyMonth = null;
-function viewDaily(){
-  const all = dailyDays(), t = todayISO();
+function viewDaily(bookId){
+  const t = todayISO();
+  if(!bookId){ const d = dailyToday(); bookId = d ? d.book : Object.keys(BOOKS).find(isDaily); }
+  const all = dailyDays().filter(d => !bookId || d.book === bookId);
   if(!all.length){ root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Textul zilei</h1><div class="empty">Încă nu e publicat. Studio de pe Mac îl pregătește automat.</div></div>`; return; }
   const months = [...new Set(all.map(d => d.ch.date.slice(0, 7)))];
   if(!dailyMonth || !months.includes(dailyMonth)) dailyMonth = months.includes(t.slice(0, 7)) ? t.slice(0, 7) : months[0];
   const mName = ym => { const [y, m] = ym.split("-").map(Number); const s = new Date(y, m - 1, 1).toLocaleDateString("ro-RO", {month: "short"}).replace(".", "");
     return s.charAt(0).toUpperCase() + s.slice(1) + (y !== new Date().getFullYear() ? " " + y : ""); };
   const days = all.filter(d => d.ch.date.startsWith(dailyMonth));
-  root.innerHTML = `<div class="view">${appbar()}<h1 class="big">Textul zilei</h1>
-    ${dailyCard()}
+  const b = BOOKS[bookId], fav = (ST.fav||{})[bookId], today = dailyToday();
+  root.innerHTML = `<div class="view">${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
+    <div class="bookhero">${coverHTML(bookId)}<h1>${esc(b.title)}</h1><div class="by">Să examinăm Scripturile în fiecare zi</div>
+      <div class="facts"><span>Română</span><span>${all.length} zile</span></div></div>
+    <div class="actions"><button class="btn primary" id="dPlayToday">${icon("play", true)} Ascultă textul de azi</button>
+      <button class="btn sq ${fav ? "on" : ""}" id="dFav" aria-label="Favorit">${icon("heart", fav)}</button></div>
+    <h2 class="sec">Zile</h2>
     <div class="chips">${months.map(m => `<button class="chip ${m === dailyMonth ? "on" : ""}" data-m="${m}">${mName(m)}</button>`).join("")}</div>
     <div class="chs">${days.map(d => { const dt = new Date(d.ch.date + "T12:00:00"), done = chapterDone(d.ch);
       return `<button class="dayrow ${d.ch.date === t ? "today" : ""}" data-b="${esc(d.book)}" data-c="${esc(d.ch.id)}">
         <span class="dn"><b>${dt.getDate()}</b><small>${dt.toLocaleDateString("ro-RO", {weekday: "short"}).replace(".", "")}</small></span>
         <span class="x"><b>${d.ch.date === t ? "Azi" : esc(d.ch.title)}</b><span>${esc(d.ch.sub || "")}</span></span>
         ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`; }).join("")}</div></div>`;
-  bindDaily();
-  root.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { dailyMonth = b.dataset.m; viewDaily(); });
+  $("#dFav").onclick = () => toggleFav(bookId);
+  $("#dPlayToday").onclick = () => { if(today) playChapter(today.book, today.ch.id, {open: true, t: chapterDone(today.ch) ? 0 : null}); };
+  root.querySelectorAll("[data-m]").forEach(x => x.onclick = () => { dailyMonth = x.dataset.m; viewDaily(bookId); });
   root.querySelectorAll(".dayrow").forEach(el => el.onclick = () => playChapter(el.dataset.b, el.dataset.c, {open: true, t: chapterDone({id: el.dataset.c}) ? 0 : null}));
-  const td = root.querySelector(".dayrow.today"); if(td) td.scrollIntoView({block: "center"});
+  const td = root.querySelector(".dayrow.today"); if(td && !viewDaily.scrolled){ viewDaily.scrolled = true; td.scrollIntoView({block: "center"}); }
 }
 
 let libFilter = "all", libQuery = "";
@@ -878,13 +904,14 @@ function viewLibrary(){
   const f = [["all","Toate"],["prog","În curs"],["fav","Favorite"],["done","Terminate"],["new","Neîncepute"]];
   root.innerHTML = `<div class="view">${appbar()}<div style="display:flex;justify-content:space-between;align-items:center"><h1 class="big">Bibliotecă</h1>
       ${USER.admin && B.addBook ? `<button class="addbtn" id="addBook">${icon("plus")}Adaugă</button>` : ""}</div>
-    ${dailyDays().length ? `<a class="daily" href="#/daily" style="margin-top:0"><div class="ic">${icon("sun")}</div><div class="x"><div class="k">Textul zilei</div><div class="dt">Toate zilele, pe luni</div></div><span style="color:var(--faint)">›</span></a>` : ""}
+
     <label class="search">${icon("search")}<input id="q" type="search" placeholder="Caută o carte" value="${esc(libQuery)}"></label>
     <div class="chips">${f.map(([k, l]) => `<button class="chip ${libFilter === k ? "on" : ""}" data-f="${k}">${l}</button>`).join("")}</div>
     <div id="libGrid"></div></div>`;
   const draw = () => {
     const ids = bookIds().filter(id => { const p = bookProgress(id);
       if(libQuery && !BOOKS[id].title.toLowerCase().includes(libQuery.toLowerCase())) return false;
+      if(isDaily(id)) return libFilter === "all" || (libFilter === "fav" && (ST.fav||{})[id]);
       return libFilter === "all" || (libFilter === "fav" && (ST.fav||{})[id]) || (libFilter === "prog" && p.started && p.pct < .995)
         || (libFilter === "done" && p.pct >= .995) || (libFilter === "new" && !p.started); });
     $("#libGrid").innerHTML = ids.length ? `<div class="grid">${ids.map(tile).join("")}</div>` : `<div class="empty">Nimic aici.</div>`;
@@ -897,6 +924,7 @@ function viewLibrary(){
 
 function viewBook(id){
   const b = BOOKS[id]; if(!b){ location.hash = "#/library"; return; }
+  if(b.kind === "daily") return viewDaily(id);
   const chs = chaptersOf(id), p = bookProgress(id), r = resumePoint(id), fav = (ST.fav||{})[id];
   const playingThis = PL.book === id && !audio.paused;
   const label = playingThis ? "Pauză" : p.pct >= .995 ? "Ascultă din nou" : p.started ? "Continuă" : "Ascultă";
