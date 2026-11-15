@@ -437,6 +437,19 @@ body.reading:has(.mini.hidden) .selbar{bottom:calc(var(--safe-b) + 18px)}
 .selbar .ab.on{color:var(--accent)}
 .selbar .ab svg{width:21px;height:21px}
 .hlbar{width:4px;align-self:stretch;border-radius:4px;flex:none}
+
+/* ---------- adding books ---------- */
+.srv{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);background:var(--bg2);border-radius:12px;padding:9px 12px;margin:0 0 12px}
+.srv i{width:8px;height:8px;border-radius:50%;background:#e5a13a;flex:none}
+.srv.on i{background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 22%,transparent)}
+.seg2{display:flex;background:var(--bg2);border-radius:12px;padding:3px;margin:0 0 12px}
+.seg2 button{flex:1;height:38px;border-radius:10px;font-weight:650;font-size:14px;color:var(--muted)}
+.seg2 button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.filepick{display:flex;align-items:center;gap:10px;border:1.5px dashed var(--line);border-radius:14px;padding:16px;cursor:pointer;color:var(--ink);font-weight:600}
+.filepick svg{width:22px;height:22px;color:var(--accent);flex:none}
+.filepick span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet .fine{font-size:13px;color:var(--muted);margin:8px 2px 0}
+.chip.on.up{background:var(--accent);color:var(--accent-ink)}
 </style>
 </head>
 <body>
@@ -628,10 +641,37 @@ async function FirebaseBackend(cfg){
       await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async deny(uid){ await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async revoke(uid){ await D.set(D.ref(db, `ab/allowed/${uid}`), null); },
-    async addBook(url, whole, collection){ const r = D.push(D.ref(db, "ab/inbox")); await D.set(r, {url, whole: !!whole, collection: collection || "", status: "nou", at: Date.now(), by: me().uid}); },
+    /* adding books: only the admin and the people the admin picks */
+    async canAdd(){ return !!(await val(`ab/uploaders/${me().uid}`).catch(() => null)); },
+    async uploaders(){ return (await val("ab/uploaders")) || {}; },
+    async setUploader(uid, on){ await D.set(D.ref(db, `ab/uploaders/${uid}`), on ? true : null); },
+    async server(){ return await val("ab/studio").catch(() => null); },
+    async uploadFile(file, onProgress){
+      // the file travels in pieces through the database; the server puts it back together
+      const id = "u" + Date.now().toString(36), base = `ab/uploads/${me().uid}/${id}`;
+      const buf = new Uint8Array(await file.arrayBuffer()), size = 450000, n = Math.max(1, Math.ceil(buf.length / size));
+      for(let i = 0; i < n; i++){
+        const part = buf.subarray(i * size, (i + 1) * size); let bin = "";
+        for(let j = 0; j < part.length; j += 0x8000) bin += String.fromCharCode.apply(null, part.subarray(j, j + 0x8000));
+        await D.set(D.ref(db, `${base}/c/${i}`), btoa(bin));
+        onProgress && onProgress((i + 1) / n);
+      }
+      return {id, size: buf.length};
+    },
+    async addBook(req){
+      const r = D.push(D.ref(db, "ab/inbox")), at = Date.now(), u = me();
+      const entry = {by: u.uid, byName: (u.displayName || (u.email || "").split("@")[0] || "").slice(0, 40), status: "nou", at};
+      for(const [k, v] of Object.entries(req)) if(v !== undefined && v !== null) entry[k] = v;
+      await D.set(r, entry);
+      await D.set(D.ref(db, `ab/own/${u.uid}/adds/${r.key}`), {book: req.title || req.name || req.url || "Carte", status: "nou", msg: "Așteaptă serverul", at}).catch(() => {});
+      return r.key;
+    },
     async setCollection(id, name){ await D.set(D.ref(db, `${bookBase(id, "books")}/${id}/collection`), name); },
     async setCover(id, url){ await D.set(D.ref(db, `${bookBase(id, "books")}/${id}/cover`), url); },
-    async bookRequests(){ return (await val("ab/inbox")) || {}; },
+    async updateBook(id, fields){ await D.update(D.ref(db, `${bookBase(id, "books")}/${id}`), fields); },
+    async deleteBook(id){ const t = bookBase(id, "texts"), b = bookBase(id, "books");
+      await D.set(D.ref(db, `${t}/${id}`), null); await D.set(D.ref(db, `${b}/${id}`), null); },
+    async bookRequests(){ return (USER && USER.admin ? await val("ab/inbox") : await val(`ab/own/${me().uid}/adds`)) || {}; },
   };
 }
 
@@ -1045,7 +1085,7 @@ function bookmarkSheet(){
 
 function chapterRow(c, i){
   if(c.pending) return `<button class="chrow" data-c="${esc(c.id)}"><span class="n">${i+1}</span>
-    <span class="x"><b>${esc(c.title)}</b><small>Doar text acum · audio în curând</small></span><span class="pill">${icon("text")}</span></button>`;
+    <span class="x"><b>${esc(c.title)}</b><small>${c.textOnly ? "De citit" : "Doar text acum · audio în curând"}</small></span><span class="pill">${icon("text")}</span></button>`;
   const ps = posOf(c.id), done = chapterDone(c), cur = PL.ch && PL.ch.id === c.id;
   const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
   return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("wave") : i+1}</span>
@@ -1166,7 +1206,7 @@ function viewLibrary(){
   const f = [["all","Toate"], ...cols.map(c => ["c:" + c, c]), ["fav","Favorite"], ["prog","În curs"]];
   if(!f.some(([k]) => k === libFilter)) libFilter = "all";
   root.innerHTML = `<div class="view">${appbar()}<div style="display:flex;justify-content:space-between;align-items:center"><h1 class="big">Bibliotecă</h1>
-      ${USER.admin && B.mode !== "local" ? `<button class="addbtn" id="addBook">${icon("plus")}Adaugă</button>` : ""}</div>
+      ${(USER.admin || USER.canAdd) && B.mode !== "local" ? `<button class="addbtn" id="addBook">${icon("plus")}Adaugă</button>` : ""}</div>
     <label class="search">${icon("search")}<input id="q" type="search" placeholder="Caută o carte" value="${esc(libQuery)}"></label>
     <div class="chips">${f.map(([k, l]) => `<button class="chip ${libFilter === k ? "on" : ""}" data-f="${esc(k)}">${esc(l)}</button>`).join("")}</div>
     <div id="libGrid"></div></div>`;
@@ -1223,7 +1263,7 @@ function viewBook(id){
   root.innerHTML = `<div class="view"><div class="bookbg" style="--h:${b.hue ?? hueOf(b.title)}">${b.cover ? `<img src="${esc(b.cover)}" alt="">` : ""}</div>
     ${appbar(`<button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button>`)}
     <div class="bookhero">${coverHTML(id)}<h1>${esc(b.title)}</h1><div class="by">${esc(b.author || "")}</div>
-      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${textOnly ? "Doar text, deocamdată" : fmtDur(p.total)}</span>${b.own ? `<span>Doar pentru tine</span>` : ""}</div>${collectionPill(id)}</div>
+      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${textOnly ? (b.textOnly ? "Doar text" : "Doar text, deocamdată") : fmtDur(p.total)}</span>${b.own ? `<span>Doar pentru tine</span>` : ""}</div>${collectionPill(id)}</div>
     <div class="actions"><button class="btn primary" id="bPlay">${icon(playingThis ? "pause" : "play", true)} ${label}</button>
       <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button>
       <button class="btn sq" id="bMore" aria-label="Mai multe">${icon("more")}</button></div>
@@ -1262,8 +1302,10 @@ function moreSheet(id){
     <button class="opt" id="mReset"><span>Ascultă din nou de la început</span>${icon("back")}</button>
     ${n ? `<button class="opt" id="mMarks"><span>Semne de carte (${n})</span>${icon("bookmark")}</button>` : ""}
     ${bookDownloaded(id) || chaptersOf(id).some(c => isDownloaded(c.id)) ? `<button class="opt" id="mRmDl"><span>Șterge descărcarea de pe telefon</span>${icon("trash")}</button>` : ""}
-    ${USER.admin && B.mode !== "local" ? `<button class="opt" id="mCol"><span>Mută în altă colecție</span>${icon("edit")}</button>
-      <button class="opt" id="mCover"><span>Schimbă coperta</span>${icon("image")}</button>` : ""}
+    ${canManage(id) ? `<button class="opt" id="mInfo"><span>Schimbă titlul sau autorul</span>${icon("edit")}</button>
+      <button class="opt" id="mCover"><span>Schimbă coperta</span>${icon("image")}</button>
+      <button class="opt" id="mCol"><span>Mută în altă colecție</span>${icon("lib")}</button>
+      <button class="opt" id="mDel" style="color:#e5484d"><span>Șterge cartea</span>${icon("trash")}</button>` : ""}
     <div style="color:var(--muted);font-size:13px;margin-top:10px">${p.started ? `${Math.round(p.pct*100)}% ascultat` : "Neînceput"} · ${chaptersOf(id).length} capitole · ${fmtDur(p.total)}</div>`,
     el => {
       $("#mReset").onclick = () => resetSheet(id);
@@ -1271,20 +1313,74 @@ function moreSheet(id){
       const mc = $("#mCol"); if(mc) mc.onclick = () => collectionSheet(id);
       const rd = $("#mRmDl"); if(rd) rd.onclick = async () => { await removeDownload(id); closeSheet(); toast("Descărcarea a fost ștearsă"); render(); };
       const mv = $("#mCover"); if(mv) mv.onclick = () => coverSheet(id);
+      const mi = $("#mInfo"); if(mi) mi.onclick = () => infoSheet(id);
+      const md = $("#mDel"); if(md) md.onclick = () => deleteSheet(id);
     });
 }
+/* your own books are yours to manage; the shared ones only the admin manages */
+const canManage = id => B.mode !== "local" && !!BOOKS[id] && BOOKS[id].kind !== "daily" && (BOOKS[id].own || USER.admin);
+function infoSheet(id){
+  const b = BOOKS[id];
+  sheet(`<h3>Titlu și autor</h3>
+    <input type="text" id="inTitle" maxlength="120" value="${esc(b.title)}" placeholder="Titlul cărții">
+    <input type="text" id="inAuthor" maxlength="80" value="${esc(b.author || "")}" placeholder="Autor (opțional)" style="margin-top:10px">
+    <button class="btn primary" id="inSave" style="width:100%;margin-top:12px">Salvează</button>`, el => {
+    $("#inSave").onclick = async () => {
+      const title = $("#inTitle").value.trim(), author = $("#inAuthor").value.trim();
+      if(!title){ toast("Scrie un titlu"); return; }
+      try{ await B.updateBook(id, {title, author: author || null}); b.title = title; if(author) b.author = author; else delete b.author;
+        saveCache(); closeSheet(); toast("Salvat"); if(PL.book === id) updateNowPlaying(); render(); }
+      catch(e){ toast("Nu s-a putut salva: " + (e.code || e.message)); }
+    };
+  });
+}
+function deleteSheet(id){
+  const b = BOOKS[id];
+  sheet(`<h3>Ștergi cartea?</h3>
+    <p style="color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 6px">„${esc(b.title)}” dispare din ${b.own ? "biblioteca ta" : "biblioteca tuturor celor cu acces"}, împreună cu textul ei. Nu se poate anula.</p>
+    <button class="btn danger" id="doDel" style="width:100%;margin-top:8px">Șterge definitiv</button>
+    <button class="btn plain" id="noDel" style="width:100%">Renunță</button>`, el => {
+    $("#noDel").onclick = closeSheet;
+    $("#doDel").onclick = async () => {
+      $("#doDel").disabled = true;
+      try{
+        await B.deleteBook(id);
+        if(PL.book === id){ audio.pause(); audio.removeAttribute("src"); PL.ch = null; PL.book = null; $("#mini").classList.add("hidden"); }
+        try{ await removeDownload(id); }catch(e){}
+        delete BOOKS[id]; saveCache(); closeSheet(); toast("Cartea a fost ștearsă"); location.hash = "#/library";
+      }catch(e){ $("#doDel").disabled = false; toast("Nu s-a putut șterge: " + (e.code || e.message)); }
+    };
+  });
+}
 function coverSheet(id){
-  sheet(`<h3>Coperta cărții</h3><p style="color:var(--muted);font-size:14px;margin:0 0 10px">Lipește linkul unei imagini (de exemplu coperta de pe site-ul editurii). Gol = coperta generată.</p>
-    <input type="url" id="covUrl" placeholder="https://…/coperta.jpg" value="${esc(BOOKS[id].cover || "")}">
+  const cur = BOOKS[id].cover || "";
+  sheet(`<h3>Coperta cărții</h3>
+    <label class="filepick" style="margin-bottom:12px">${icon("image")}<span>Alege o poză din telefon</span><input type="file" id="covFile" accept="image/*" hidden></label>
+    <p style="color:var(--muted);font-size:14px;margin:0 0 10px">Sau lipește linkul unei imagini. Gol = coperta generată.</p>
+    <input type="url" id="covUrl" placeholder="https://…/coperta.jpg" value="${esc(cur.startsWith("data:") ? "" : cur)}">
     <div id="covPrev" style="margin:12px auto 0;width:120px"></div>
     <button class="btn primary" id="covSave" style="width:100%;margin-top:12px">Salvează coperta</button>`, el => {
-      const prev = () => { const u = $("#covUrl").value.trim(); $("#covPrev").innerHTML = u ? `<div class="cover img" style="width:120px"><img src="${esc(u)}" alt=""></div>` : ""; };
-      $("#covUrl").addEventListener("input", prev); prev();
-      $("#covSave").onclick = async () => { const u = $("#covUrl").value.trim() || null;
-        if(u && !/^https:\/\//.test(u)){ toast("Linkul trebuie să înceapă cu https://"); return; }
+      let photo = cur.startsWith("data:") ? cur : null;
+      const prev = () => { const u = photo || $("#covUrl").value.trim(); $("#covPrev").innerHTML = u ? `<div class="cover img" style="width:120px"><img src="${esc(u)}" alt=""></div>` : ""; };
+      $("#covUrl").addEventListener("input", () => { photo = null; prev(); }); prev();
+      $("#covFile").onchange = async () => { const f = $("#covFile").files[0]; if(!f) return;
+        try{ photo = await shrinkImage(f, 420); $("#covUrl").value = ""; prev(); }catch(e){ toast("Nu pot citi poza"); } };
+      $("#covSave").onclick = async () => { const u = photo || $("#covUrl").value.trim() || null;
+        if(u && !photo && !/^https:\/\//.test(u)){ toast("Linkul trebuie să înceapă cu https://"); return; }
         try{ await B.setCover(id, u); BOOKS[id].cover = u || undefined; delete artCache[id]; saveCache(); closeSheet(); toast("Coperta a fost salvată"); render(); }
         catch(e){ toast("Nu s-a putut salva: " + (e.code || e.message)); } };
     });
+}
+/* a phone photo becomes a small cover kept with the book */
+function shrinkImage(file, maxW){
+  return new Promise((ok, bad) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const w = Math.min(maxW, img.naturalWidth), h = Math.round(img.naturalHeight * w / img.naturalWidth);
+      const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.8)); };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(new Error("imagine")); };
+    img.src = url;
+  });
 }
 function resetSheet(id){
   const n = bookmarksOf(id).length;
@@ -1369,7 +1465,7 @@ function drawReaderAction(){
   const x = $("#rdAct"); if(!x || !RD.ch || !RD.shown) return;
   const ch = RD.ch, live = PL.ch && PL.book === RD.book && PL.ch.id === ch.id && audio.src;
   const resume = !chapterDone(ch) && (posOf(ch.id)?.t || 0) > 5;
-  x.innerHTML = ch.pending ? `<span class="pill">${icon("wave")} Audio în curând</span>`
+  x.innerHTML = ch.pending ? (ch.textOnly ? "" : `<span class="pill">${icon("wave")} Audio în curând</span>`)
     : live ? "" : `<button class="btn primary" id="rdPlay" style="max-width:280px;margin:0 auto">${icon("play", true)} ${resume ? "Ascultă de unde ai rămas" : "Ascultă capitolul"}</button>`;
   const pb = $("#rdPlay"); if(pb) pb.onclick = async () => { PL.userScroll = 0; await playChapter(RD.book, ch.id); drawReaderAction(); };
 }
@@ -1573,41 +1669,102 @@ function viewProfile(){
   $("#logout").onclick = async () => { if(!confirm("Ieși din cont?")) return; audio.pause(); persist(true); await B.signOut(); location.hash = "#/home"; location.reload(); };
 }
 
+const fmtSize = n => n > 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1e3)) + " KB";
+const serverOn = srv => !!(srv && Date.now() - (srv.at || 0) < 3 * 60000);
 async function addBookSheet(){
-  const draw = async () => {
-    let reqs = {}; try{ reqs = await B.bookRequests(); }catch(e){}
-    const list = Object.entries(reqs || {}).sort((x, y) => (y[1].at||0) - (x[1].at||0)).slice(0, 8);
-    const st = {nou: ["așteaptă Mac-ul", ""], lucru: ["se generează", ""], gata: ["gata", "ok"], eroare: ["eroare", "err"]};
+  let mode = "file", file = null, reqs = {}, srv = null, sending = false;
+  const keep = {};
+  const remember = () => ["bookUrl", "bookTitle", "bookAuthor", "bookCol"].forEach(id => { const el = $("#" + id); if(el) keep[id] = el.value; });
+  const val0 = id => esc(keep[id] || "");
+  const paint = () => {
+    const on = serverOn(srv);
+    const list = Object.entries(reqs || {}).filter(([, r]) => r).sort((x, y) => (y[1].at||0) - (x[1].at||0)).slice(0, 8);
+    const st = {nou: ["așteaptă", ""], lucru: ["în lucru", ""], gata: ["gata", "ok"], eroare: ["eroare", "err"]};
     $("#sheetBody").innerHTML = `<h3>Adaugă o carte</h3>
-      <p style="color:var(--muted);font-size:14px;margin:0 0 12px">Lipește linkul unei cărți, al unui articol sau al unui PDF. Studio de pe Mac îl transformă în audio și îl publică singur, când e pornit.</p>
-      <input type="url" id="bookUrl" placeholder="https://…" autocomplete="off">
-      <input type="text" id="bookCol" list="colList" placeholder="Colecție (de ex. General, SF, JW)" style="margin-top:10px" maxlength="40">
+      <div class="srv ${on ? "on" : ""}"><i></i><span>${on ? (srv.busy ? `Serverul e pornit · lucrează la ${srv.busy} ${srv.busy === 1 ? "capitol" : "capitole"}` : "Serverul e pornit")
+        : "Serverul e oprit acum. Cererea ta intră în lucru când pornește."}</span></div>
+      <div class="seg2"><button data-m="file" class="${mode === "file" ? "on" : ""}">Fișier</button><button data-m="link" class="${mode === "link" ? "on" : ""}">Link</button></div>
+      ${mode === "file" ? `<label class="filepick">${icon("text")}<span>${file ? esc(file.name) + " · " + fmtSize(file.size) : "Alege un PDF, Word sau text"}</span>
+          <input type="file" id="bookFile" hidden accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.md,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
+        <input type="text" id="bookTitle" placeholder="Titlul cărții (opțional)" maxlength="120" value="${val0("bookTitle")}" style="margin-top:10px">
+        <input type="text" id="bookAuthor" placeholder="Autor (opțional)" maxlength="80" value="${val0("bookAuthor")}" style="margin-top:10px">`
+      : `<input type="url" id="bookUrl" placeholder="https://…" autocomplete="off" value="${val0("bookUrl")}">
+        <label class="chk"><input type="checkbox" id="whole" checked> Dacă linkul e un capitol, adaugă toată cartea</label>`}
+      <input type="text" id="bookCol" list="colList" placeholder="Colecție (de ex. General, SF)" style="margin-top:10px" maxlength="40" value="${val0("bookCol")}">
       <datalist id="colList">${collections().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
-      <label style="display:flex;gap:10px;align-items:center;font-size:14px;margin:12px 2px"><input type="checkbox" id="whole" checked> Dacă linkul e un capitol, adaugă toată cartea</label>
-      <button class="btn primary" id="sendBook" style="width:100%">Trimite</button>
-      ${list.length ? `<h3 style="margin-top:20px">Cereri recente</h3>` + list.map(([k, r]) => { const s = st[r.status] || [r.status, ""];
-        return `<div class="req"><span style="min-width:0"><b>${esc(r.book || r.url)}</b><small>${esc(r.msg || r.url)}</small></span><span class="pill ${s[1]}">${s[0]}</span></div>`; }).join("") : ""}`;
-    $("#sendBook").onclick = async () => {
-      const url = $("#bookUrl").value.trim();
-      if(!/^https?:\/\//.test(url)){ toast("Lipește un link care începe cu https://"); return; }
-      try{ await B.addBook(url, $("#whole").checked, $("#bookCol").value.trim()); toast("Trimis. Apare în bibliotecă după ce Studio îl termină."); draw(); }
-      catch(e){ toast("Nu s-a putut trimite: " + (e.code || e.message)); }
-    };
+      <label class="chk"><input type="checkbox" id="wantAudio" checked> Vreau și audio (cartea citită cu voce)</label>
+      ${USER.admin ? `<label class="chk"><input type="checkbox" id="forAll" ${mode === "link" ? "checked" : ""}> Vizibilă pentru toți cei cu acces</label>` : ""}
+      <button class="btn primary" id="sendBook" style="width:100%" ${sending ? "disabled" : ""}>Trimite</button>
+      <p class="fine">${USER.admin ? "Nebifat, cartea apare doar în biblioteca ta." : "Cartea apare doar în biblioteca ta."} Textul apare primul; vocea se generează pe server și vine pe rând, capitol cu capitol.</p>
+      ${list.length ? `<h3 style="margin-top:20px">Cererile tale</h3>` + list.map(([k, r]) => { const x = st[r.status] || [r.status, ""];
+        return `<div class="req"><span style="min-width:0"><b>${esc(r.book || r.title || r.name || r.url || "Carte")}</b><small>${esc(r.msg || (r.status === "nou" ? "Așteaptă serverul" : ""))}</small></span><span class="pill ${x[1]}">${x[0]}</span></div>`; }).join("") : ""}`;
+    $("#sheetBody").querySelectorAll("[data-m]").forEach(b => b.onclick = () => { remember(); mode = b.dataset.m; paint(); });
+    const fi = $("#bookFile"); if(fi) fi.onchange = () => { remember(); file = fi.files[0] || null;
+      if(file && !keep.bookTitle) keep.bookTitle = file.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim(); paint(); };
+    $("#sendBook").onclick = send;
   };
-  sheet(`<p style="color:var(--muted)">Se încarcă…</p>`); await draw();
+  const send = async () => {
+    const btn = $("#sendBook"), forAll = $("#forAll") && $("#forAll").checked;
+    const base = {collection: $("#bookCol").value.trim().slice(0, 40), audio: $("#wantAudio").checked, owner: forAll ? "" : USER.uid};
+    try{
+      if(mode === "link"){
+        const url = $("#bookUrl").value.trim();
+        if(!/^https?:\/\//.test(url)){ toast("Lipește un link care începe cu https://"); return; }
+        sending = true; btn.disabled = true;
+        await B.addBook({...base, url, whole: $("#whole").checked});
+        keep.bookUrl = "";
+      } else {
+        if(!file){ toast("Alege mai întâi un fișier"); return; }
+        const kind = (file.name.match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase() || "";
+        if(!["pdf", "doc", "docx", "txt", "rtf", "odt", "md"].includes(kind)){ toast("Merg fișiere PDF, Word (.docx, .doc) sau text (.txt)"); return; }
+        if(file.size > 40e6){ toast("Fișierul e prea mare: cel mult 40 MB"); return; }
+        if(!navigator.onLine){ toast("Pentru trimitere ai nevoie de internet"); return; }
+        sending = true; btn.disabled = true;
+        const up = await B.uploadFile(file, f => { btn.textContent = `Se trimite… ${Math.round(f * 100)}%`; });
+        await B.addBook({...base, upload: up.id, size: up.size, name: file.name.slice(0, 120), kind,
+          title: $("#bookTitle").value.trim().slice(0, 120), author: $("#bookAuthor").value.trim().slice(0, 80)});
+        file = null; keep.bookTitle = keep.bookAuthor = "";
+      }
+      toast(serverOn(srv) ? "Trimisă. Serverul o preia în cel mult un minut." : "Trimisă. Serverul o preia când pornește.");
+      sending = false; await load(); paint();
+    }catch(e){ sending = false; btn.disabled = false; btn.textContent = "Trimite"; toast("Nu s-a putut trimite: " + (e.code || e.message)); }
+  };
+  const load = async () => { try{ [reqs, srv] = await Promise.all([B.bookRequests().catch(() => ({})), B.server ? B.server() : null]); }catch(e){} };
+  sheet(`<p style="color:var(--muted)">Se încarcă…</p>`); await load(); paint();
 }
+
+/* tell people when a book they asked for is ready */
+async function checkReady(){
+  if(!USER || !(USER.admin || USER.canAdd) || !B || B.mode === "local" || !B.bookRequests) return;
+  try{
+    const reqs = await B.bookRequests(), first = store.get("ab_seen_ready", null) === null, seen = store.get("ab_seen_ready", {}) || {};
+    let ready = [];
+    for(const [k, r] of Object.entries(reqs || {})){
+      if(!r || r.status !== "gata" || seen[k]) continue;
+      seen[k] = 1; if(!r.by || r.by === USER.uid) ready.push(r.book || r.title || r.name || "Cartea");
+    }
+    store.set("ab_seen_ready", seen);
+    if(ready.length && !first){ toast(ready.length === 1 ? `„${ready[0]}” e gata în bibliotecă` : `${ready.length} cărți noi sunt gata în bibliotecă`); refreshAll && refreshAll(); }
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") checkReady(); });
 
 async function drawAdmin(){
   const box = $("#adminBox"); if(!box) return;
-  const [req, ok] = await Promise.all([B.requests(), B.allowedList()]).catch(() => [{}, {}]);
+  const [req, ok, ups] = await Promise.all([B.requests(), B.allowedList(), B.uploaders ? B.uploaders().catch(() => ({})) : {}]).catch(() => [{}, {}, {}]);
   const person = (p, uid) => `<span style="min-width:0"><b style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name || p.email || uid)}</b>
     <small style="color:var(--muted)">${esc(p.email || "")}</small></span>`;
   const rows = Object.entries(req).map(([uid, p]) => `<div class="setrow">${person(p, uid)}<span style="display:flex;gap:8px;flex:none">
       <button class="chip" data-deny="${esc(uid)}">Refuz</button><button class="chip on" data-ok="${esc(uid)}">Aprobă</button></span></div>`).join("")
-    + Object.entries(ok).map(([uid, p]) => `<div class="setrow">${person(p, uid)}<button class="chip" data-rev="${esc(uid)}">Scoate</button></div>`).join("");
+    + Object.entries(ok).map(([uid, p]) => `<div class="setrow">${person(p, uid)}<span style="display:flex;gap:8px;flex:none">
+      <button class="chip ${ups[uid] ? "on up" : ""}" data-up="${esc(uid)}" aria-pressed="${!!ups[uid]}">${ups[uid] ? "Adaugă cărți ✓" : "Adaugă cărți"}</button>
+      <button class="chip" data-rev="${esc(uid)}">Scoate</button></span></div>`).join("")
+    + (Object.keys(ok).length ? `<div class="setrow"><span style="color:var(--muted);font-size:13px">„Adaugă cărți”: persoana poate trimite PDF, Word, text sau linkuri. Cărțile ei apar doar la ea.</span></div>` : "");
   box.innerHTML = rows || `<div class="setrow"><span style="color:var(--muted);font-size:14px">Când cineva își face cont, cererea apare aici. Trimite-le linkul aplicației.</span></div>`;
   box.querySelectorAll("[data-ok]").forEach(b => b.onclick = async () => { await B.approve(b.dataset.ok, req[b.dataset.ok]); toast("Acces aprobat"); drawAdmin(); });
   box.querySelectorAll("[data-deny]").forEach(b => b.onclick = async () => { await B.deny(b.dataset.deny); drawAdmin(); });
+  box.querySelectorAll("[data-up]").forEach(b => b.onclick = async () => { const on = !ups[b.dataset.up];
+    try{ await B.setUploader(b.dataset.up, on); toast(on ? "Poate adăuga cărți" : "Nu mai poate adăuga cărți"); }catch(e){ toast("Nu s-a putut schimba"); } drawAdmin(); });
   box.querySelectorAll("[data-rev]").forEach(b => b.onclick = async () => { if(!confirm("Scoți accesul acestei persoane?")) return; await B.revoke(b.dataset.rev); drawAdmin(); });
 }
 
@@ -1742,7 +1899,7 @@ function showApp(){
   tabsEl.classList.remove("hidden");
   audio.playbackRate = prefs().speed; $("#speedV").textContent = fmtSpeed(prefs().speed);
   if(!shown){ skipIcons(); renderSleep(); $("#player").classList.remove("open"); }
-  render();
+  render(); setTimeout(checkReady, 2500);
   // restore the mini player where you left off (paused), unless you closed it with X
   if(B.mode !== "cache" && ST.last && BOOKS[ST.last.book] && !PL.ch && !store.get("ab_mini_closed", false)){
     const r = resumePoint(ST.last.book); if(r) playChapter(ST.last.book, r.ch.id, {t: r.t, autoplay: false});
@@ -1755,7 +1912,8 @@ async function onUser(u){
   USER = Object.assign({}, u, {admin: warm ? USER.admin : false});
   if(!warm) root.innerHTML = SPLASH;
   let adm = false;
-  try{ [BOOKS, ST, adm] = await Promise.all([B.books(), B.state(), B.isAdmin ? B.isAdmin().catch(() => false) : false]); }
+  let can = false;
+  try{ [BOOKS, ST, adm, can] = await Promise.all([B.books(), B.state(), B.isAdmin ? B.isAdmin().catch(() => false) : false, B.canAdd ? B.canAdd().catch(() => false) : false]); }
   catch(e){
     const offline = !navigator.onLine || /offline|network|unavailable|timeout/i.test(String(e && (e.code || e.message)));
     const cache = store.get("ab_cache_" + u.uid, null);
@@ -1774,9 +1932,9 @@ async function onUser(u){
     $("#again").onclick = () => onUser(u);
     $("#lo").onclick = async ev => { ev.preventDefault(); await B.signOut(); location.reload(); }; return;
   }
-  USER.admin = !!adm;
+  USER.admin = !!adm; USER.canAdd = !!can;
   BOOKS = BOOKS || {}; ST = ST || {};
-  if(B.mode !== "local"){ store.set("ab_last_user", {uid: u.uid, name: u.name, email: u.email, photo: u.photo || "", admin: USER.admin}); saveCache(); }
+  if(B.mode !== "local"){ store.set("ab_last_user", {uid: u.uid, name: u.name, email: u.email, photo: u.photo || "", admin: USER.admin, canAdd: USER.canAdd}); saveCache(); }
   showApp();
 }
 
