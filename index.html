@@ -1315,7 +1315,7 @@ async function addBookSheet(){
     const list = Object.entries(reqs || {}).sort((x, y) => (y[1].at||0) - (x[1].at||0)).slice(0, 8);
     const st = {nou: ["așteaptă Mac-ul", ""], lucru: ["se generează", ""], gata: ["gata", "ok"], eroare: ["eroare", "err"]};
     $("#sheetBody").innerHTML = `<h3>Adaugă o carte</h3>
-      <p style="color:var(--muted);font-size:14px;margin:0 0 12px">Lipește linkul unei cărți sau al unui articol. Studio de pe Mac îl transformă în audio și îl publică singur, când e pornit.</p>
+      <p style="color:var(--muted);font-size:14px;margin:0 0 12px">Lipește linkul unei cărți, al unui articol sau al unui PDF. Studio de pe Mac îl transformă în audio și îl publică singur, când e pornit.</p>
       <input type="url" id="bookUrl" placeholder="https://…" autocomplete="off">
       <input type="text" id="bookCol" list="colList" placeholder="Colecție (de ex. General, SF, JW)" style="margin-top:10px" maxlength="40">
       <datalist id="colList">${collections().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
