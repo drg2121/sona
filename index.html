@@ -450,6 +450,57 @@ body.reading:has(.mini.hidden) .selbar{bottom:calc(var(--safe-b) + 18px)}
 .filepick span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sheet .fine{font-size:13px;color:var(--muted);margin:8px 2px 0}
 .chip.on.up{background:var(--accent);color:var(--accent-ink)}
+.voices{display:flex;flex-direction:column;gap:8px;margin:2px 0 12px}
+.voices.off{display:none}
+.vo{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--bg2);border:1.5px solid transparent;cursor:pointer}
+.vo.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg2))}
+.vo .vplay{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--card);flex:none;color:var(--accent)}
+.vo .vplay svg{width:16px;height:16px}
+.vo span{flex:1;min-width:0}
+.vo b{display:block;font-size:15px}
+.vo small{display:block;color:var(--muted);font-size:12.5px}
+.vo .ck{color:var(--accent);flex:none;visibility:hidden}
+.vo.on .ck{visibility:visible}
+.vlang{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted);margin:0 2px 6px}
+.vlang button{padding:3px 9px;border-radius:99px;font-weight:700;font-size:12px;background:var(--bg2);color:var(--muted)}
+.vlang button.on{background:var(--ink);color:var(--bg)}
+
+.addhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px}
+.addhead h3{margin:0}
+.srvpill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:650;color:var(--muted);background:var(--bg2);padding:6px 11px;border-radius:99px;white-space:nowrap}
+.srvpill i{width:7px;height:7px;border-radius:50%;background:#e5a13a}
+.srvpill.on i{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.drop{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:18px;background:var(--bg2);border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--line));cursor:pointer;margin:0 0 12px}
+.drop.has{border-style:solid;border-color:var(--accent)}
+.drop .dic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);flex:none}
+.drop .dic svg{width:22px;height:22px}
+.drop .dtx{min-width:0}
+.drop b{display:block;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drop small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.group{background:var(--bg2);border-radius:18px;margin:0 0 12px;overflow:hidden}
+.group > *{border-bottom:1px solid var(--line)}
+.group > :last-child{border-bottom:0}
+.field{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:52px}
+.field > span{width:72px;flex:none;font-size:14.5px;font-weight:600;color:var(--muted)}
+.sheet .group .field input{flex:1;min-width:0;width:auto;border:0;border-radius:0;background:none;outline:none;padding:15px 0;font-size:16px;color:var(--ink)}
+.tg{display:flex;align-items:center;gap:14px;padding:12px 16px;cursor:pointer}
+.tg > span{flex:1;min-width:0}
+.tg b{display:block;font-size:15.5px;font-weight:600}
+.tg small{display:block;color:var(--muted);font-size:13px;margin-top:2px;line-height:1.35}
+.switch{-webkit-appearance:none;appearance:none;width:51px;height:31px;border-radius:99px;margin:0;flex:none;position:relative;cursor:pointer;
+  background:color-mix(in srgb,var(--ink) 16%,transparent);transition:background-color .2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.28);transition:transform .2s cubic-bezier(.3,.7,.3,1)}
+.switch:checked{background:var(--accent)}
+.switch:checked::after{transform:translateX(20px)}
+.switch:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.group .voices{padding:2px 12px 12px;margin:0}
+.group .vo{background:var(--card)}
+.group .vo .vplay{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.group .vo.on .vplay{background:var(--accent);color:var(--accent-ink)}
+.group .vlang{margin:8px 4px 6px}
+h4.sub{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:22px 6px 8px;font-weight:700}
+.group .req{padding:12px 16px;border-bottom:1px solid var(--line)}
+.group .req:last-child{border-bottom:0}
 </style>
 </head>
 <body>
@@ -642,6 +693,20 @@ async function FirebaseBackend(cfg){
     async deny(uid){ await D.set(D.ref(db, `ab/requests/${uid}`), null); },
     async revoke(uid){ await D.set(D.ref(db, `ab/allowed/${uid}`), null); },
     /* adding books: only the admin and the people the admin picks */
+    /* notifications for the admin: someone asks for access or sends a book */
+    async enablePush(){
+      if(!("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)) throw new Error("unsupported");
+      if(await Notification.requestPermission() !== "granted") throw new Error("denied");
+      const M = await import(`${FIREBASE_SDK}/firebase-messaging.js`);
+      if(!(await M.isSupported())) throw new Error("unsupported");
+      const reg = await navigator.serviceWorker.ready;
+      const token = await M.getToken(M.getMessaging(app), {vapidKey: window.FB_VAPID, serviceWorkerRegistration: reg});
+      if(!token) throw new Error("no token");
+      const key = token.slice(-24).replace(/[^\w-]/g, "_");
+      await D.set(D.ref(db, `ab/push/${me().uid}/${key}`), {token, at: Date.now(), ua: navigator.userAgent.slice(0, 120)});
+      store.set("ab_push", key);
+    },
+    async testPush(){ await D.set(D.push(D.ref(db, `ab/pushtest/${me().uid}`)), {at: Date.now()}); },
     async canAdd(){ return !!(await val(`ab/uploaders/${me().uid}`).catch(() => null)); },
     async uploaders(){ return (await val("ab/uploaders")) || {}; },
     async setUploader(uid, on){ await D.set(D.ref(db, `ab/uploaders/${uid}`), on ? true : null); },
@@ -1004,7 +1069,7 @@ function chapterSheet(){
 
 /* sheets + toast */
 function sheet(html, bind){ $("#sheetBody").innerHTML = html; bind && bind($("#sheetBody")); $("#sheet").classList.add("open"); $("#sheetBg").classList.add("open"); }
-function closeSheet(){ $("#sheet").classList.remove("open"); $("#sheetBg").classList.remove("open"); }
+function closeSheet(){ if(typeof stopSample === "function") stopSample(); $("#sheet").classList.remove("open"); $("#sheetBg").classList.remove("open"); }
 $("#sheetBg").onclick = closeSheet;
 let toastT; function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600); }
 
@@ -1650,6 +1715,9 @@ function viewProfile(){
     ${standalone ? "" : `<h2 class="sec">Pune aplicația pe ecranul telefonului</h2><div class="note">${ios
       ? "În Safari apasă butonul Partajează (pătratul cu săgeată), apoi „Adaugă pe ecranul principal”. Aplicația se deschide ca una normală și merge și cu ecranul blocat."
       : "În Chrome apasă meniul ⋮ și alege „Adaugă pe ecranul de pornire” sau „Instalează aplicația”."}</div>`}
+    ${USER.admin && B.mode !== "local" ? `<h2 class="sec">Notificări</h2><div class="set"><div class="setrow">
+      <span style="min-width:0"><b style="display:block;font-weight:600">Pe acest telefon</b><small style="color:var(--muted)">Când cineva cere acces sau trimite o carte</small></span>
+      <button class="chip ${store.get("ab_push", null) ? "on up" : ""}" id="pushBtn">${store.get("ab_push", null) ? "Active · probă" : "Activează"}</button></div></div>` : ""}
     ${USER.admin ? `<h2 class="sec">Cine are acces</h2><div class="set" id="adminBox"><div class="setrow"><span style="color:var(--muted)">Se încarcă…</span></div></div>` : ""}
     <h2 class="sec">Ajutor</h2>
     <div class="set"><button class="setrow" style="width:100%" id="howTo"><span>Cum funcționează Sona</span><span style="color:var(--faint)">›</span></button></div>
@@ -1663,6 +1731,17 @@ function viewProfile(){
     viewProfile(); }));
   $("#autoNext").onclick = async () => { await save("prefs/autoNext", !prefs().autoNext); viewProfile(); };
   if(USER.admin) drawAdmin();
+  const pb = $("#pushBtn"); if(pb) pb.onclick = async () => {
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+    if(ios && !standalone){ toast("Pe iPhone, deschide Sona de pe ecranul principal, apoi activează notificările"); return; }
+    pb.disabled = true;
+    try{
+      if(!store.get("ab_push", null)){ await B.enablePush(); toast("Notificările sunt active pe acest telefon"); }
+      await B.testPush(); toast("Am trimis o notificare de probă");
+    }catch(e){ toast(e.message === "denied" ? "Ai refuzat notificările. Le poți permite din Setări → Notificări → Sona"
+      : e.message === "unsupported" ? "Telefonul sau browserul nu primește notificări" : "Nu s-au putut activa: " + (e.code || e.message)); }
+    pb.disabled = false; viewProfile();
+  };
   root.querySelectorAll("#themeSeg [data-t]").forEach(b => b.onclick = () => { const t = b.dataset.t; store.set("ab_theme", t);
     if(t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; viewProfile(); });
   const hw = $("#howTo"); if(hw) hw.onclick = () => showOnboarding(true);
@@ -1671,8 +1750,14 @@ function viewProfile(){
 
 const fmtSize = n => n > 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1e3)) + " KB";
 const serverOn = srv => !!(srv && Date.now() - (srv.at || 0) < 3 * 60000);
+const VOICE_OPTS = [
+  {id: "M5", name: "Bărbat · grav", note: "cald, ca un povestitor"},
+  {id: "F5", name: "Femeie · calmă", note: "blândă, liniștită"},
+  {id: "M1", name: "Bărbat · vioi", note: "mai alert, mai luminos"}];
+let voiceSample = null, voiceSampleKey = "";
+function stopSample(){ if(voiceSample){ voiceSample.pause(); voiceSample = null; voiceSampleKey = ""; } document.querySelectorAll(".vo .vplay").forEach(b => b.innerHTML = icon("play", true)); }
 async function addBookSheet(){
-  let mode = "file", file = null, reqs = {}, srv = null, sending = false;
+  let mode = "file", file = null, reqs = {}, srv = null, sending = false, voice = store.get("ab_voice", "M5"), sLang = "ro", wantAudio = true;
   const keep = {};
   const remember = () => ["bookUrl", "bookTitle", "bookAuthor", "bookCol"].forEach(id => { const el = $("#" + id); if(el) keep[id] = el.value; });
   const val0 = id => esc(keep[id] || "");
@@ -1680,32 +1765,61 @@ async function addBookSheet(){
     const on = serverOn(srv);
     const list = Object.entries(reqs || {}).filter(([, r]) => r).sort((x, y) => (y[1].at||0) - (x[1].at||0)).slice(0, 8);
     const st = {nou: ["așteaptă", ""], lucru: ["în lucru", ""], gata: ["gata", "ok"], eroare: ["eroare", "err"]};
-    $("#sheetBody").innerHTML = `<h3>Adaugă o carte</h3>
-      <div class="srv ${on ? "on" : ""}"><i></i><span>${on ? (srv.busy ? `Serverul e pornit · lucrează la ${srv.busy} ${srv.busy === 1 ? "capitol" : "capitole"}` : "Serverul e pornit")
-        : "Serverul e oprit acum. Cererea ta intră în lucru când pornește."}</span></div>
+    const tg = (id, title, sub, on) => `<label class="tg"><span><b>${title}</b><small>${sub}</small></span><input type="checkbox" class="switch" id="${id}" ${on ? "checked" : ""}></label>`;
+    $("#sheetBody").innerHTML = `<div class="addhead"><h3>Adaugă o carte</h3>
+        <span class="srvpill ${on ? "on" : ""}"><i></i>${on ? (srv.busy ? `Server pornit · ${srv.busy} în lucru` : "Server pornit") : "Server oprit"}</span></div>
+      ${on ? "" : `<p class="fine" style="margin:-6px 4px 12px">Cererea intră în lucru când pornește serverul.</p>`}
       <div class="seg2"><button data-m="file" class="${mode === "file" ? "on" : ""}">Fișier</button><button data-m="link" class="${mode === "link" ? "on" : ""}">Link</button></div>
-      ${mode === "file" ? `<label class="filepick">${icon("text")}<span>${file ? esc(file.name) + " · " + fmtSize(file.size) : "Alege un PDF, Word sau text"}</span>
-          <input type="file" id="bookFile" hidden accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.md,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
-        <input type="text" id="bookTitle" placeholder="Titlul cărții (opțional)" maxlength="120" value="${val0("bookTitle")}" style="margin-top:10px">
-        <input type="text" id="bookAuthor" placeholder="Autor (opțional)" maxlength="80" value="${val0("bookAuthor")}" style="margin-top:10px">`
-      : `<input type="url" id="bookUrl" placeholder="https://…" autocomplete="off" value="${val0("bookUrl")}">
-        <label class="chk"><input type="checkbox" id="whole" checked> Dacă linkul e un capitol, adaugă toată cartea</label>`}
-      <input type="text" id="bookCol" list="colList" placeholder="Colecție (de ex. General, SF)" style="margin-top:10px" maxlength="40" value="${val0("bookCol")}">
+      ${mode === "file" ? `<label class="drop ${file ? "has" : ""}"><span class="dic">${icon(file ? "check" : "plus")}</span>
+          <span class="dtx"><b>${file ? esc(file.name) : "Alege fișierul"}</b><small>${file ? fmtSize(file.size) + " · atinge ca să schimbi" : "PDF, Word sau text · cel mult 40 MB"}</small></span>
+          <input type="file" id="bookFile" hidden accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.md,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>` : ""}
+      <div class="group">
+        ${mode === "file" ? `<label class="field"><span>Titlu</span><input type="text" id="bookTitle" placeholder="opțional" maxlength="120" value="${val0("bookTitle")}"></label>
+          <label class="field"><span>Autor</span><input type="text" id="bookAuthor" placeholder="opțional" maxlength="80" value="${val0("bookAuthor")}"></label>`
+        : `<label class="field"><span>Link</span><input type="url" id="bookUrl" placeholder="https://…" autocomplete="off" value="${val0("bookUrl")}"></label>`}
+        <label class="field"><span>Colecție</span><input type="text" id="bookCol" list="colList" placeholder="de ex. General, SF" maxlength="40" value="${val0("bookCol")}"></label>
+      </div>
       <datalist id="colList">${collections().map(c => `<option value="${esc(c)}">`).join("")}</datalist>
-      <label class="chk"><input type="checkbox" id="wantAudio" checked> Vreau și audio (cartea citită cu voce)</label>
-      ${USER.admin ? `<label class="chk"><input type="checkbox" id="forAll" ${mode === "link" ? "checked" : ""}> Vizibilă pentru toți cei cu acces</label>` : ""}
+      <div class="group">
+        ${mode === "link" ? tg("whole", "Toată cartea", "Dacă linkul e un capitol, le adaug pe toate", true) : ""}
+        ${tg("wantAudio", "Citită cu voce", "Textul apare primul; vocea vine capitol cu capitol", wantAudio)}
+        <div class="voices ${wantAudio ? "" : "off"}" id="voicePick">
+          <div class="vlang">Vocea · mostră în <button data-sl="ro" class="${sLang === "ro" ? "on" : ""}">română</button><button data-sl="en" class="${sLang === "en" ? "on" : ""}">engleză</button></div>
+          ${VOICE_OPTS.map(v => `<div class="vo ${voice === v.id ? "on" : ""}" data-v="${v.id}" role="radio" aria-checked="${voice === v.id}">
+            <button class="vplay" data-play="${v.id}" aria-label="Ascultă mostra: ${esc(v.name)}">${icon("play", true)}</button>
+            <span><b>${esc(v.name)}</b><small>${esc(v.note)}</small></span><span class="ck">${icon("check")}</span></div>`).join("")}
+        </div>
+        ${USER.admin ? tg("forAll", "Pentru toți", "Altfel apare doar în biblioteca ta", mode === "link") : ""}
+      </div>
       <button class="btn primary" id="sendBook" style="width:100%" ${sending ? "disabled" : ""}>Trimite</button>
-      <p class="fine">${USER.admin ? "Nebifat, cartea apare doar în biblioteca ta." : "Cartea apare doar în biblioteca ta."} Textul apare primul; vocea se generează pe server și vine pe rând, capitol cu capitol.</p>
-      ${list.length ? `<h3 style="margin-top:20px">Cererile tale</h3>` + list.map(([k, r]) => { const x = st[r.status] || [r.status, ""];
-        return `<div class="req"><span style="min-width:0"><b>${esc(r.book || r.title || r.name || r.url || "Carte")}</b><small>${esc(r.msg || (r.status === "nou" ? "Așteaptă serverul" : ""))}</small></span><span class="pill ${x[1]}">${x[0]}</span></div>`; }).join("") : ""}`;
-    $("#sheetBody").querySelectorAll("[data-m]").forEach(b => b.onclick = () => { remember(); mode = b.dataset.m; paint(); });
+      ${USER.admin ? "" : `<p class="fine" style="text-align:center">Cartea apare doar în biblioteca ta.</p>`}
+      ${list.length ? `<h4 class="sub">${USER.admin ? "Cereri recente" : "Cererile tale"}</h4><div class="group">` + list.map(([k, r]) => { const x = st[r.status] || [r.status, ""];
+        return `<div class="req"><span style="min-width:0"><b>${esc(r.book || r.title || r.name || r.url || "Carte")}</b><small>${esc(r.msg || (r.status === "nou" ? "Așteaptă serverul" : ""))}</small></span><span class="pill ${x[1]}">${x[0]}</span></div>`; }).join("") + `</div>` : ""}`;
+    $("#sheetBody").querySelectorAll("[data-m]").forEach(b => b.onclick = () => { remember(); stopSample(); mode = b.dataset.m; paint(); });
     const fi = $("#bookFile"); if(fi) fi.onchange = () => { remember(); file = fi.files[0] || null;
       if(file && !keep.bookTitle) keep.bookTitle = file.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim(); paint(); };
     $("#sendBook").onclick = send;
+    $("#wantAudio").onchange = () => { wantAudio = $("#wantAudio").checked; $("#voicePick").classList.toggle("off", !wantAudio); if(!wantAudio) stopSample(); };
+    $("#sheetBody").querySelectorAll("[data-sl]").forEach(b => b.onclick = () => { stopSample(); sLang = b.dataset.sl;
+      $("#sheetBody").querySelectorAll("[data-sl]").forEach(x => x.classList.toggle("on", x === b)); });
+    $("#sheetBody").querySelectorAll(".vo").forEach(el => el.onclick = e => {
+      voice = el.dataset.v; store.set("ab_voice", voice);
+      $("#sheetBody").querySelectorAll(".vo").forEach(x => { x.classList.toggle("on", x === el); x.setAttribute("aria-checked", x === el); });
+      const pb = e.target.closest("[data-play]"); if(!pb) return;
+      const playing = voiceSample && voiceSampleKey === pb.dataset.play + sLang;
+      stopSample(); if(playing) return;
+      if(!audio.paused) audio.pause();
+      voiceSample = new Audio(`voci/${sLang}-${pb.dataset.play}.mp3`); voiceSampleKey = pb.dataset.play + sLang;
+      pb.innerHTML = icon("pause", true);
+      voiceSample.onended = stopSample;
+      voiceSample.play().catch(() => { stopSample(); toast("Nu pot reda mostra acum"); });
+    });
   };
   const send = async () => {
     const btn = $("#sendBook"), forAll = $("#forAll") && $("#forAll").checked;
-    const base = {collection: $("#bookCol").value.trim().slice(0, 40), audio: $("#wantAudio").checked, owner: forAll ? "" : USER.uid};
+    const base = {collection: $("#bookCol").value.trim().slice(0, 40), audio: $("#wantAudio").checked, owner: forAll ? "" : USER.uid,
+      voice: $("#wantAudio").checked ? voice : undefined};
+    stopSample();
     try{
       if(mode === "link"){
         const url = $("#bookUrl").value.trim();
