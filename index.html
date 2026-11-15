@@ -901,7 +901,14 @@ async function onUser(u){
 (async function start(){
   setupMediaSession();
   const cfg = window.FB_CONFIG;
-  B = (!LOCAL && cfg && cfg.apiKey) ? await FirebaseBackend(cfg) : LocalBackend();
+  if(!LOCAL && !(cfg && cfg.apiKey)){
+    // online copy without its settings (old link or failed download): never fall back to Mac mode
+    root.innerHTML = `<div class="login"><img class="logo" src="icon-192.png" alt=""><h1>Sona</h1>
+      <p class="sub">Nu s-au putut încărca setările. Deschide adresa <b>drg2121.github.io/sona</b> și verifică internetul.</p>
+      <a class="btn primary" href="https://drg2121.github.io/sona/" style="text-decoration:none">Deschide Sona</a></div>`;
+    return;
+  }
+  B = LOCAL ? LocalBackend() : await FirebaseBackend(cfg);
   B.init(onUser);
   if("serviceWorker" in navigator && isSecureContext && !LOCAL) navigator.serviceWorker.register("sw.js").catch(()=>{});
 })();
