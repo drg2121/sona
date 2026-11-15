@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14110e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cărți audio">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Cărți audio</title>
+<style>
+:root{
+  --bg:#14110e; --bg2:#1c1814; --card:#231f1a; --card2:#2b261f; --ink:#f5eee4; --muted:#a99e8e; --faint:#6f665a;
+  --line:#352e26; --accent:#ff8d4f; --accent-ink:#1a0f08; --ok:#62c48f; --shadow:0 10px 30px rgba(0,0,0,.45);
+  --serif:"New York","Iowan Old Style",Charter,Georgia,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --nav-h:62px; --mini-h:64px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#f7f2ea; --bg2:#efe7da; --card:#fffdf9; --card2:#f3ece1; --ink:#1f1b16; --muted:#6b6257; --faint:#a59a8a;
+    --line:#e4dccd; --accent:#d4561f; --accent-ink:#fff; --ok:#2f7d4f; --shadow:0 10px 30px rgba(60,40,20,.18); }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input{font:inherit;color:var(--ink)}
+svg.i{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.fill{fill:currentColor;stroke:none}
+.hidden{display:none!important}
+
+/* ---------- shell ---------- */
+.view{max-width:720px;margin:0 auto;padding:calc(var(--safe-t) + 18px) 18px calc(var(--nav-h) + var(--mini-h) + var(--safe-b) + 24px)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.top h1{font:700 30px/1.1 var(--serif);margin:0;letter-spacing:-.01em}
+.hello{font-size:14px;color:var(--muted)}
+.avatar{text-decoration:none;width:38px;height:38px;border-radius:50%;background:var(--card2);display:grid;place-items:center;font-weight:700;color:var(--accent)}
+h2.sec{font:650 19px/1.2 var(--sans);margin:26px 0 12px;display:flex;justify-content:space-between;align-items:baseline}
+h2.sec a{font-size:14px;font-weight:600;color:var(--accent);text-decoration:none}
+.empty{color:var(--muted);font-size:15px;padding:18px;background:var(--card);border-radius:16px;text-align:center}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);
+  padding-bottom:var(--safe-b);display:flex;justify-content:center}
+nav.tabs .in{display:flex;width:100%;max-width:720px}
+nav.tabs a{flex:1;height:var(--nav-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--faint);text-decoration:none;font-size:11px;font-weight:600}
+nav.tabs a.on{color:var(--accent)}
+
+/* ---------- covers ---------- */
+.cover{--h:20;position:relative;aspect-ratio:2/3;border-radius:10px;overflow:hidden;color:#fff;
+  background:radial-gradient(120% 70% at 85% 0%,hsl(calc(var(--h) + 20) 70% 62% / .45),transparent 60%),
+             linear-gradient(160deg,hsl(var(--h) 48% 40%),hsl(calc(var(--h) + 30) 55% 15%));
+  box-shadow:0 6px 18px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08)}
+.cover::before{content:"";position:absolute;inset:7%;border:1px solid rgba(255,255,255,.28);border-radius:4px}
+.cover::after{content:"";position:absolute;left:0;top:0;bottom:0;width:7%;background:linear-gradient(90deg,rgba(0,0,0,.35),rgba(255,255,255,.08) 70%,transparent)}
+.cover .ct{position:absolute;inset:14% 13% 12%;display:flex;flex-direction:column;justify-content:space-between;text-align:center}
+.cover .ctitle{font:700 1em/1.12 var(--serif);text-wrap:balance;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+.cover .cauth{font-size:.48em;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.cover .cmark{display:flex;justify-content:center;opacity:.9}
+.cover .cmark svg{width:1.1em;height:1.1em}
+
+/* ---------- cards / grids ---------- */
+.continue{display:flex;gap:16px;align-items:center;background:var(--card);border-radius:20px;padding:14px;box-shadow:var(--shadow)}
+.continue .cover{width:92px;font-size:13px;flex:none}
+.continue .meta{flex:1;min-width:0}
+.continue .k{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.continue .t{font:700 19px/1.2 var(--serif);margin:4px 0 2px}
+.continue .c{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:4px;background:var(--line);border-radius:9px;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:9px}
+.playbig{width:54px;height:54px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none;box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 45%,transparent)}
+.playbig svg{width:26px;height:26px}
+
+.shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
+.shelf::-webkit-scrollbar{display:none}
+.shelf .tile{width:118px;flex:none;scroll-snap-align:start}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:20px 16px}
+.tile{display:block;text-align:left;color:inherit;text-decoration:none}
+.tile .cover{font-size:15px}
+.tile .tt{font-weight:650;font-size:14px;margin-top:9px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile .ts{font-size:12px;color:var(--muted);margin-top:2px}
+.tile .bar{margin-top:6px;height:3px}
+.badge{position:absolute;right:8px;top:8px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border-radius:99px;padding:3px 7px;font-size:11px;font-weight:700;display:flex;gap:4px;align-items:center}
+.badge svg{width:12px;height:12px}
+
+.search{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:14px;padding:0 14px;margin-bottom:12px}
+.search input{flex:1;border:0;background:none;padding:13px 0;outline:none}
+.chips{display:flex;gap:8px;overflow-x:auto;margin:0 -18px 18px;padding:0 18px;scrollbar-width:none}
+.chip{flex:none;padding:8px 14px;border-radius:99px;background:var(--card);font-size:14px;font-weight:600;color:var(--muted)}
+.chip.on{background:var(--ink);color:var(--bg)}
+
+/* ---------- book page ---------- */
+.bookhero{position:relative;text-align:center;padding-top:6px}
+.back{width:40px;height:40px;border-radius:50%;background:var(--card);display:grid;place-items:center}
+.bookhero .cover{width:min(52vw,220px);margin:6px auto 18px;font-size:21px}
+.bookhero h1{font:700 26px/1.15 var(--serif);margin:0 0 6px;text-wrap:balance}
+.bookhero .by{color:var(--muted);font-size:15px}
+.bookhero .facts{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:14px 0 6px;font-size:13px;color:var(--muted)}
+.bookhero .facts span{background:var(--card);padding:5px 10px;border-radius:99px}
+.actions{display:flex;gap:10px;margin:18px 0 8px}
+.btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:16px;font-weight:700;font-size:16px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.sq{flex:none;width:52px;background:var(--card)}
+.btn.sq.on{color:#ff5a6e}
+.progline{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
+.chs{margin-top:20px;background:var(--card);border-radius:18px;overflow:hidden}
+.chrow{display:flex;gap:14px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.chrow:last-child{border-bottom:0}
+.chrow .n{width:26px;text-align:center;font-weight:700;color:var(--faint);font-variant-numeric:tabular-nums;flex:none}
+.chrow .x{flex:1;min-width:0}
+.chrow .x b{display:block;font-weight:600;font-size:15px;line-height:1.3}
+.chrow .x small{color:var(--muted);font-size:13px}
+.chrow .x .bar{height:3px;margin-top:6px}
+.chrow.cur{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.chrow.cur .n{color:var(--accent)}
+.chrow .done{color:var(--ok)}
+
+/* ---------- history / profile ---------- */
+.day{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 8px}
+.hrow{display:flex;gap:14px;align-items:center;padding:10px;border-radius:14px;width:100%;text-align:left}
+.hrow:active{background:var(--card)}
+.hrow .cover{width:44px;font-size:7px;border-radius:6px;flex:none}
+.hrow .x{flex:1;min-width:0}
+.hrow .x b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .x small{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .when{font-size:12px;color:var(--faint);flex:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 6px}
+.stat{background:var(--card);border-radius:16px;padding:14px 10px;text-align:center}
+.stat b{display:block;font:700 22px/1.1 var(--serif)}
+.stat span{font-size:12px;color:var(--muted)}
+.set{background:var(--card);border-radius:18px;overflow:hidden}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.setrow:last-child{border-bottom:0}
+.seg{display:flex;background:var(--bg2);border-radius:10px;padding:3px}
+.seg button{padding:6px 10px;border-radius:8px;font-size:13px;font-weight:650;color:var(--muted)}
+.seg button.on{background:var(--card2);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch{width:50px;height:30px;border-radius:99px;background:var(--line);position:relative;transition:.2s;flex:none}
+.switch::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.switch.on{background:var(--ok)} .switch.on::after{left:23px}
+.linkbtn{color:var(--accent);font-weight:650}
+.note{font-size:14px;color:var(--muted);background:var(--card);border-radius:16px;padding:14px 16px;line-height:1.5}
+
+/* ---------- login ---------- */
+.login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;max-width:400px;margin:0 auto;padding:calc(var(--safe-t) + 30px) 24px 40px}
+.login .logo{width:84px;height:84px;border-radius:22px;margin:0 auto 18px;display:block;box-shadow:var(--shadow)}
+.login h1{font:700 32px/1.1 var(--serif);text-align:center;margin:0 0 6px}
+.login p.sub{text-align:center;color:var(--muted);margin:0 0 28px}
+.field{display:block;margin-bottom:12px}
+.field input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;outline:none}
+.field input:focus{border-color:var(--accent)}
+.login .btn{width:100%;margin-top:6px}
+.login .alt{text-align:center;margin-top:18px;font-size:15px;color:var(--muted)}
+.err{color:#ff7a6e;font-size:14px;min-height:20px;margin:4px 2px 6px}
+
+/* ---------- mini player ---------- */
+.mini{position:fixed;left:8px;right:8px;bottom:calc(var(--nav-h) + var(--safe-b) + 6px);z-index:19;max-width:704px;margin:0 auto;
+  background:var(--card2);border-radius:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;overflow:hidden}
+.mini .cover{width:40px;font-size:6px;border-radius:6px;flex:none}
+.mini .x{flex:1;min-width:0;cursor:pointer}
+.mini .x b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .x small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .pp{width:42px;height:42px;border-radius:50%;display:grid;place-items:center}
+.mini .prog{position:absolute;left:0;bottom:0;height:2px;background:var(--accent)}
+
+/* ---------- full player ---------- */
+.player{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;transform:translateY(100%);
+  transition:transform .32s cubic-bezier(.2,.8,.2,1);padding:calc(var(--safe-t) + 8px) 22px calc(var(--safe-b) + 16px)}
+.player.open{transform:none}
+.player .bgblur{position:absolute;inset:0;z-index:-1;opacity:.55;filter:blur(60px) saturate(1.3);transform:scale(1.4)}
+.player .phead{display:flex;align-items:center;justify-content:space-between;height:48px}
+.player .phead .lbl{font-size:13px;font-weight:650;color:var(--muted);text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
+.iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
+.pbody{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0;max-width:520px;width:100%;margin:0 auto}
+.pcover{width:min(70vw,44vh,340px);margin:0 auto;font-size:26px;border-radius:14px}
+.ptitles{margin:26px 0 8px}
+.ptitles b{display:block;font:700 22px/1.2 var(--serif)}
+.ptitles span{color:var(--muted);font-size:15px}
+.reader{flex:1;overflow-y:auto;min-height:0;font:19px/1.65 var(--serif);padding:8px 2px 40vh;scroll-behavior:smooth;
+  -webkit-mask-image:linear-gradient(transparent,#000 6%,#000 90%,transparent);mask-image:linear-gradient(transparent,#000 6%,#000 90%,transparent)}
+.reader p{margin:0 0 16px} .reader h3{font:700 1.05em/1.3 var(--serif);margin:22px 0 12px;color:var(--accent)}
+.reader span{color:var(--faint);transition:color .25s;cursor:pointer;border-radius:4px}
+.reader span.read{color:var(--muted)}
+.reader span.cur{color:var(--ink);background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+.player.text .pcover,.player.text .ptitles{display:none}
+.player:not(.text) .reader{display:none}
+.player.text .pbody{justify-content:flex-start}
+.scrub{margin-top:14px}
+.scrub input{width:100%;-webkit-appearance:none;appearance:none;height:28px;background:transparent}
+.scrub input::-webkit-slider-runnable-track{height:5px;border-radius:9px;background:linear-gradient(90deg,var(--ink) var(--p,0%),var(--line) var(--p,0%))}
+.scrub input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--ink);margin-top:-5.5px}
+.scrub input::-moz-range-track{height:5px;border-radius:9px;background:var(--line)}
+.scrub input::-moz-range-progress{height:5px;border-radius:9px;background:var(--ink)}
+.scrub input::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--ink);border:0}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-2px}
+.controls{display:flex;align-items:center;justify-content:space-between;margin:14px 0 18px}
+.controls .iconbtn svg{width:30px;height:30px}
+.skip{position:relative;width:56px;height:56px;display:grid;place-items:center}
+.skip svg{width:34px;height:34px}
+.skip em{position:absolute;font-style:normal;font-size:10px;font-weight:800;top:21px}
+.pplay{width:76px;height:76px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.pplay svg{width:34px;height:34px}
+.tools{display:flex;justify-content:space-around;align-items:center}
+.tool{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:650;color:var(--muted);min-width:64px}
+.tool.on{color:var(--accent)}
+.tool .v{font-size:15px;font-weight:800;color:var(--ink);height:24px;display:grid;place-items:center}
+
+/* ---------- sheets ---------- */
+.sheetbg{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheetbg.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;max-width:560px;margin:0 auto;background:var(--card);border-radius:22px 22px 0 0;
+  padding:10px 18px calc(var(--safe-b) + 18px);transform:translateY(100%);transition:transform .25s;max-height:75vh;overflow:auto}
+.sheet.open{transform:none}
+.sheet .grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 14px}
+.sheet h3{margin:0 0 10px;font-size:17px}
+.opt{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 4px;border-bottom:1px solid var(--line);font-size:16px}
+.opt:last-child{border-bottom:0}
+.opt.on{color:var(--accent);font-weight:700}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--mini-h) + var(--safe-b) + 20px);transform:translateX(-50%) translateY(20px);opacity:0;
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;z-index:80;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.loading{display:grid;place-items:center;min-height:60vh;color:var(--muted)}
+@media (min-width:760px){ .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))} }
+</style>
+</head>
+<body>
+<main id="root"><div class="loading">Se încarcă…</div></main>
+
+<div class="mini hidden" id="mini">
+  <div class="cover" id="miniCover"></div>
+  <div class="x" id="miniOpen"><b id="miniTitle"></b><small id="miniSub"></small></div>
+  <button class="pp" id="miniBack" aria-label="Înapoi 15 secunde"></button>
+  <button class="pp" id="miniPlay" aria-label="Redă"></button>
+  <div class="prog" id="miniProg"></div>
+</div>
+
+<nav class="tabs hidden" id="tabs"><div class="in">
+  <a href="#/home" data-tab="home"></a><a href="#/library" data-tab="library"></a>
+  <a href="#/history" data-tab="history"></a><a href="#/profile" data-tab="profile"></a>
+</div></nav>
+
+<section class="player" id="player" aria-label="Player">
+  <div class="bgblur" id="pBlur"></div>
+  <div class="phead">
+    <button class="iconbtn" id="pClose" aria-label="Închide"></button>
+    <div class="lbl" id="pLabel"></div>
+    <button class="iconbtn" id="pChapters" aria-label="Capitole"></button>
+  </div>
+  <div class="pbody">
+    <div class="cover pcover" id="pCover"></div>
+    <div class="ptitles"><b id="pTitle"></b><span id="pSub"></span></div>
+    <div class="reader" id="reader"></div>
+  </div>
+  <div style="max-width:520px;width:100%;margin:0 auto">
+    <div class="scrub"><input type="range" id="seek" min="0" max="1000" value="0" aria-label="Poziție"></div>
+    <div class="times"><span id="tCur">0:00</span><span id="tLeft">-0:00</span></div>
+    <div class="controls">
+      <button class="iconbtn" id="pPrev" aria-label="Capitolul anterior"></button>
+      <button class="skip" id="pBack" aria-label="Înapoi"></button>
+      <button class="pplay" id="pPlay" aria-label="Redă"></button>
+      <button class="skip" id="pFwd" aria-label="Înainte"></button>
+      <button class="iconbtn" id="pNext" aria-label="Capitolul următor"></button>
+    </div>
+    <div class="tools">
+      <button class="tool" id="tSpeed"><span class="v" id="speedV">1×</span>Viteză</button>
+      <button class="tool" id="tSleep"><span class="v" id="sleepV"></span><span id="sleepL">Somn</span></button>
+      <button class="tool" id="tText"><span class="v" id="textV"></span>Text</button>
+      <button class="tool" id="tFav"><span class="v" id="favV"></span>Favorit</button>
+    </div>
+  </div>
+</section>
+
+<div class="sheetbg" id="sheetBg"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div class="toast" id="toast"></div>
+<audio id="audio" preload="metadata" playsinline></audio>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+/* =====================================================================
+   Cărți audio — phone app. Data comes from Firebase (online) or from the
+   Studio on the Mac (local mode, http://localhost:8765/app/).
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = { get(k,d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch(e){ return d; } },
+                set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- icons ---------- */
+const P = {
+  play:'<path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/>',
+  pause:'<rect x="6" y="4" width="4.2" height="16" rx="1.2"/><rect x="13.8" y="4" width="4.2" height="16" rx="1.2"/>',
+  home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  lib:'<path d="M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.6l3.8 1 -3.9 14.8-3.8-1z"/>',
+  hist:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  down:'<path d="m6 9 6 6 6-6"/>', left:'<path d="m15 18-6-6 6-6"/>', list:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+  prev:'<path d="M19 20 9 12l10-8zM5 19V5"/>', next:'<path d="m5 4 10 8-10 8zM19 5v14"/>',
+  back:'<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>', fwd:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+  heart:'<path d="M12 20.5s-8-4.6-8-10.6A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 2.9c0 6-8 10.6-8 10.6z"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>', text:'<path d="M4 6h16M4 10h16M4 14h10M4 18h12"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  head:'<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/>',
+};
+const icon = (n, fill) => `<svg class="i${fill?" fill":""}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+
+/* ---------- formatting ---------- */
+const fmtClock = s => { s = Math.max(0, Math.floor(s||0)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return h ? `${h}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}` : `${m}:${String(x).padStart(2,"0")}`; };
+const fmtDur = s => { s = Math.round((s||0)/60); if(s < 1) return "sub 1 min"; const h = Math.floor(s/60), m = s%60;
+  return h ? `${h} h${m ? " " + m + " min" : ""}` : `${m} min`; };
+const hueOf = str => { let h = 7; for(const c of String(str)) h = (h*31 + c.charCodeAt(0)) % 360; return h; };
+const dayLabel = ts => { const d = new Date(ts), t = new Date(); const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const b = new Date(t.getFullYear(), t.getMonth(), t.getDate()); const diff = Math.round((b - a)/864e5);
+  return diff === 0 ? "Azi" : diff === 1 ? "Ieri" : d.toLocaleDateString("ro-RO", {weekday:"long", day:"numeric", month:"long"}); };
+const hhmm = ts => new Date(ts).toLocaleTimeString("ro-RO", {hour:"2-digit", minute:"2-digit"});
+
+/* =====================================================================
+   Backends
+   ===================================================================== */
+const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/10.14.1";
+const LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1" || new URLSearchParams(location.search).has("local");
+
+function LocalBackend(){
+  let user = null;
+  const key = () => "ab_state_" + user.uid;
+  return {
+    mode: "local",
+    async init(cb){ user = store.get("ab_local_user", null); cb(user); },
+    async signIn(name){ user = {uid: "local-" + name.toLowerCase().replace(/\W+/g,"-"), name, email: "pe acest Mac"}; store.set("ab_local_user", user); return user; },
+    async signUp(name){ return this.signIn(name); },
+    async signOut(){ user = null; store.set("ab_local_user", null); },
+    async resetPassword(){},
+    async books(){ const r = await fetch("/api/catalog"); return r.json(); },
+    async audioUrl(bookId, ch){ return `/audio/${ch.id}.${ch.ext || "mp3"}`; },
+    async transcript(bookId, ch){ const r = await fetch(`/api/item/${ch.id}`); return r.json(); },
+    async state(){ return store.get(key(), {}); },
+    async write(path, value){ const st = store.get(key(), {}); setPath(st, path, value); store.set(key(), st); },
+    async addHistory(entry){ const id = "h" + Date.now().toString(36); await this.write("history/" + id, entry); return id; },
+    async addListened(sec){ const st = store.get(key(), {}); st.stats = st.stats || {}; st.stats.sec = (st.stats.sec||0) + sec; store.set(key(), st); },
+  };
+}
+function setPath(obj, path, value){
+  const parts = path.split("/"); let o = obj;
+  for(let i = 0; i < parts.length - 1; i++){ o = o[parts[i]] = (o[parts[i]] && typeof o[parts[i]] === "object") ? o[parts[i]] : {}; }
+  const last = parts[parts.length-1];
+  if(value === null) delete o[last]; else if(value && typeof value === "object" && !Array.isArray(value) && typeof o[last] === "object") Object.assign(o[last], value); else o[last] = value;
+}
+
+async function FirebaseBackend(cfg){
+  const [{initializeApp}, A, D] = await Promise.all([
+    import(`${FIREBASE_SDK}/firebase-app.js`), import(`${FIREBASE_SDK}/firebase-auth.js`),
+    import(`${FIREBASE_SDK}/firebase-database.js`)]);
+  const app = initializeApp(cfg);
+  const auth = A.getAuth(app), db = D.getDatabase(app);
+  const me = () => auth.currentUser;
+  const val = async p => (await D.get(D.ref(db, p))).val();
+  const uref = p => D.ref(db, `ab/users/${me().uid}/${p}`);
+  const wrapUser = u => u && {uid: u.uid, name: u.displayName || (u.email||"").split("@")[0], email: u.email};
+  return {
+    mode: "firebase",
+    init(cb){ A.onAuthStateChanged(auth, u => cb(wrapUser(u))); },
+    async signIn(email, pass){ return wrapUser((await A.signInWithEmailAndPassword(auth, email, pass)).user); },
+    async signUp(email, pass, name){ const c = await A.createUserWithEmailAndPassword(auth, email, pass);
+      if(name) await A.updateProfile(c.user, {displayName: name}); return wrapUser(c.user); },
+    async signOut(){ await A.signOut(auth); },
+    async resetPassword(email){ await A.sendPasswordResetEmail(auth, email); },
+    async books(){ return (await val("ab/books")) || {}; },
+    async audioUrl(bookId, ch){ if(!ch.audio) throw new Error("capitol fără audio"); return ch.audio; },
+    async transcript(bookId, ch){ return (await fetch(ch.text)).json(); },
+    async state(){ return (await val(`ab/users/${me().uid}`)) || {}; },
+    async write(path, value){ await D.set(uref(path), value); },
+    async addHistory(entry){ const r = D.push(uref("history")); await D.set(r, entry); return r.key; },
+    async addListened(sec){ await D.update(uref("stats"), {sec: D.increment(sec)}); },
+    /* access: new accounts ask, the admin approves from Profil */
+    async isAdmin(){ return !!(await val(`ab/admins/${me().uid}`)); },
+    async requestAccess(name){ const u = me(); await D.set(D.ref(db, `ab/requests/${u.uid}`), {email: u.email, name: name || u.displayName || "", at: Date.now()}); },
+    async requests(){ return (await val("ab/requests")) || {}; },
+    async allowedList(){ return (await val("ab/allowed")) || {}; },
+    async approve(uid, info){ await D.set(D.ref(db, `ab/allowed/${uid}`), {email: info.email || "", name: info.name || "", at: Date.now()});
+      await D.set(D.ref(db, `ab/requests/${uid}`), null); },
+    async deny(uid){ await D.set(D.ref(db, `ab/requests/${uid}`), null); },
+    async revoke(uid){ await D.set(D.ref(db, `ab/allowed/${uid}`), null); },
+  };
+}
+
+/* =====================================================================
+   State
+   ===================================================================== */
+let B = null;            // backend
+let USER = null;
+let BOOKS = {};          // id -> book
+let ST = {};             // user state: pos, fav, last, prefs, stats, history
+const DEF_PREFS = {speed: 1, back: 15, fwd: 30, autoNext: true, textSize: 19};
+const prefs = () => Object.assign({}, DEF_PREFS, ST.prefs || {});
+function chaptersOf(id){
+  const b = BOOKS[id]; if(!b) return [];
+  return Object.entries(b.chapters || {}).map(([cid, c]) => ({id: cid, ...c}))
+    .sort((a, b) => (a.order||0) - (b.order||0) || String(a.title).localeCompare(b.title));
+}
+function posOf(cid){ return (ST.pos || {})[cid] || null; }
+function chapterDone(c){ const p = posOf(c.id); return !!(p && (p.done || (c.dur && p.t >= c.dur - 3))); }
+function bookProgress(id){
+  const chs = chaptersOf(id); const total = chs.reduce((s,c)=>s+(c.dur||0),0) || 1;
+  const heard = chs.reduce((s,c)=>{ const p = posOf(c.id); return s + (chapterDone(c) ? (c.dur||0) : Math.min(p?.t||0, c.dur||0)); }, 0);
+  return {pct: Math.min(1, heard/total), left: Math.max(0, total - heard), total, started: heard > 5};
+}
+function resumePoint(id){
+  const chs = chaptersOf(id); if(!chs.length) return null;
+  const last = ST.last && ST.last.book === id ? chs.find(c => c.id === ST.last.ch) : null;
+  if(last && !chapterDone(last)) return {ch: last, t: posOf(last.id)?.t || 0};
+  if(last){ const i = chs.indexOf(last); if(chs[i+1]) return {ch: chs[i+1], t: posOf(chs[i+1].id)?.t || 0}; }
+  const started = chs.find(c => !chapterDone(c) && (posOf(c.id)?.t || 0) > 0);
+  if(started) return {ch: started, t: posOf(started.id).t};
+  const first = chs.find(c => !chapterDone(c));
+  return first ? {ch: first, t: 0} : {ch: chs[0], t: 0};
+}
+async function save(path, value){ setPath(ST, path, value); try{ await B.write(path, value); }catch(e){ console.warn("save", path, e); } }
+
+/* =====================================================================
+   Covers
+   ===================================================================== */
+function coverHTML(id, extraClass = "", badge = ""){
+  const b = BOOKS[id] || {title: "?"};
+  return `<div class="cover ${extraClass}" style="--h:${b.hue ?? hueOf(b.title)}">${badge}
+    <div class="ct"><div class="cmark">${icon("head")}</div><div class="ctitle">${esc(b.title)}</div><div class="cauth">${esc(b.author || (b.lang === "ro" ? "carte audio" : "audiobook"))}</div></div></div>`;
+}
+const artCache = {};
+function coverArt(id){
+  if(artCache[id]) return artCache[id];
+  const b = BOOKS[id] || {title: "?"}; const h = b.hue ?? hueOf(b.title);
+  const c = document.createElement("canvas"); c.width = c.height = 512; const g = c.getContext("2d");
+  const gr = g.createLinearGradient(0, 0, 512, 512); gr.addColorStop(0, `hsl(${h} 48% 40%)`); gr.addColorStop(1, `hsl(${(h+30)%360} 55% 15%)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  g.strokeStyle = "rgba(255,255,255,.3)"; g.lineWidth = 3; g.strokeRect(34, 34, 444, 444);
+  g.fillStyle = "#fff"; g.textAlign = "center"; g.font = "bold 50px Georgia, serif";
+  const words = b.title.split(/\s+/), lines = []; let line = "";
+  for(const w of words){ const t = line ? line + " " + w : w; if(g.measureText(t).width > 380 && line){ lines.push(line); line = w; } else line = t; }
+  lines.push(line);
+  const y0 = 256 - (lines.length - 1) * 30; lines.forEach((l, i) => g.fillText(l, 256, y0 + i * 60));
+  return artCache[id] = c.toDataURL("image/png");
+}
+
+/* =====================================================================
+   Player
+   ===================================================================== */
+const audio = $("#audio");
+const PL = {book: null, ch: null, list: [], cues: [], spans: [], histId: null, histAt: 0, lastTick: 0, unsent: 0, lastSave: 0,
+            sleepAt: 0, sleepEnd: false, nextUrl: null, textOn: store.get("ab_text", false), userScroll: 0};
+
+async function playChapter(bookId, chId, {t = null, autoplay = true, open = false} = {}){
+  const list = chaptersOf(bookId); const ch = list.find(c => c.id === chId) || list[0]; if(!ch) return;
+  const same = PL.ch && PL.ch.id === ch.id && audio.src;
+  PL.book = bookId; PL.list = list; PL.ch = ch; PL.histId = null;
+  updateNowPlaying();
+  if(open) openPlayer();
+  if(!same){
+    let url = PL.nextUrl && PL.nextUrl.id === ch.id ? PL.nextUrl.url : null;
+    try{ url = url || await B.audioUrl(bookId, ch); }catch(e){ toast("Nu pot încărca audio: " + (e.code || e.message)); return; }
+    audio.src = url;
+    audio.playbackRate = prefs().speed;
+    const start = t ?? (chapterDone(ch) ? 0 : (posOf(ch.id)?.t || 0));
+    const seekTo = () => { if(start > 1 && start < (audio.duration || ch.dur || 1e9) - 2) audio.currentTime = start; };
+    if(audio.readyState >= 1) seekTo(); else audio.addEventListener("loadedmetadata", seekTo, {once: true});
+    loadTranscript();
+    prefetchNext();
+  } else if(t != null){ audio.currentTime = t; }
+  save("last", {book: bookId, ch: ch.id, at: Date.now()});
+  if(autoplay){ try{ await audio.play(); }catch(e){ /* needs a tap on iOS */ } }
+}
+async function prefetchNext(){
+  const i = PL.list.findIndex(c => c.id === PL.ch.id), nx = PL.list[i+1];
+  PL.nextUrl = null;
+  if(nx){ try{ PL.nextUrl = {id: nx.id, url: await B.audioUrl(PL.book, nx)}; }catch(e){} }
+}
+function nextChapter(dir = 1){
+  const i = PL.list.findIndex(c => c.id === PL.ch.id), nx = PL.list[i + dir];
+  if(nx) playChapter(PL.book, nx.id, {t: dir < 0 ? 0 : null});
+  else if(dir < 0) audio.currentTime = 0;
+}
+function togglePlay(){ if(!PL.ch) return; audio.paused ? audio.play().catch(()=>{}) : audio.pause(); }
+function skip(sec){ if(!PL.ch) return; audio.currentTime = Math.max(0, Math.min((audio.duration||0) - 0.5, audio.currentTime + sec)); persist(true); }
+
+function persist(force){
+  if(!PL.ch) return;
+  const now = Date.now();
+  if(!force && now - PL.lastSave < 10000) return;
+  PL.lastSave = now;
+  const d = audio.duration || PL.ch.dur || 0, t = audio.currentTime;
+  save(`pos/${PL.ch.id}`, {t: Math.round(t*10)/10, d: Math.round(d), at: now, book: PL.book, done: d > 0 && t >= d - 3});
+  save("last", {book: PL.book, ch: PL.ch.id, at: now});
+  if(PL.histId) B.write(`history/${PL.histId}/to`, Math.round(t)).then(() => B.write(`history/${PL.histId}/at`, now)).catch(()=>{});
+  if(PL.unsent >= 5){ const s = Math.round(PL.unsent); PL.unsent = 0; ST.stats = ST.stats || {}; ST.stats.sec = (ST.stats.sec||0) + s; B.addListened(s).catch(()=>{}); }
+}
+
+audio.addEventListener("play", async () => {
+  PL.lastTick = performance.now();
+  const recent = PL.histId && Date.now() - PL.histAt < 5*60*1000;
+  if(!recent){
+    const entry = {book: PL.book, ch: PL.ch.id, from: Math.round(audio.currentTime), to: Math.round(audio.currentTime), at: Date.now()};
+    try{ PL.histId = await B.addHistory(entry); setPath(ST, "history/" + PL.histId, entry); }catch(e){}
+  }
+  PL.histAt = Date.now(); renderPlayState();
+});
+audio.addEventListener("pause", () => { persist(true); PL.histAt = Date.now(); renderPlayState(); });
+audio.addEventListener("timeupdate", () => {
+  if(!audio.paused){ const now = performance.now(); const dt = (now - PL.lastTick)/1000; PL.lastTick = now; if(dt > 0 && dt < 3) PL.unsent += dt; PL.histAt = Date.now(); }
+  if(PL.sleepAt && Date.now() >= PL.sleepAt){ PL.sleepAt = 0; audio.pause(); renderSleep(); toast("Somn: redarea s-a oprit"); }
+  renderProgress(); persist(false); highlight();
+});
+audio.addEventListener("ended", () => {
+  save(`pos/${PL.ch.id}`, {t: Math.round(audio.duration||PL.ch.dur||0), d: Math.round(audio.duration||0), at: Date.now(), book: PL.book, done: true});
+  persist(true);
+  if(PL.sleepEnd){ PL.sleepEnd = false; renderSleep(); toast("Somn: sfârșit de capitol"); return; }
+  const i = PL.list.findIndex(c => c.id === PL.ch.id), nx = PL.list[i+1];
+  if(nx && prefs().autoNext){
+    // switch source right away (prefetched URL) so playback continues with the screen locked
+    if(PL.nextUrl && PL.nextUrl.id === nx.id){ PL.ch = nx; audio.src = PL.nextUrl.url; audio.playbackRate = prefs().speed; audio.play().catch(()=>{});
+      PL.histId = null; updateNowPlaying(); loadTranscript(); prefetchNext(); save("last", {book: PL.book, ch: nx.id, at: Date.now()}); }
+    else playChapter(PL.book, nx.id, {t: 0});
+  } else if(!nx){ toast("Ai terminat cartea 🎉"); render(); }
+});
+audio.addEventListener("ratechange", () => { $("#speedV").textContent = fmtSpeed(audio.playbackRate); mediaPos(); });
+audio.addEventListener("loadedmetadata", mediaPos);
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "hidden") persist(true); });
+window.addEventListener("pagehide", () => persist(true));
+
+/* lock screen / headphones / car */
+function mediaPos(){ try{ if(audio.duration) navigator.mediaSession.setPositionState({duration: audio.duration, playbackRate: audio.playbackRate, position: Math.min(audio.currentTime, audio.duration)}); }catch(e){} }
+function setupMediaSession(){
+  if(!("mediaSession" in navigator)) return;
+  const ms = navigator.mediaSession, h = (a, f) => { try{ ms.setActionHandler(a, f); }catch(e){} };
+  h("play", () => audio.play()); h("pause", () => audio.pause());
+  h("seekbackward", d => skip(-(d.seekOffset || prefs().back))); h("seekforward", d => skip(d.seekOffset || prefs().fwd));
+  h("previoustrack", () => nextChapter(-1)); h("nexttrack", () => nextChapter(1));
+  h("seekto", d => { audio.currentTime = d.seekTime; mediaPos(); });
+}
+function updateNowPlaying(){
+  const b = BOOKS[PL.book]; if(!b || !PL.ch) return;
+  const idx = PL.list.findIndex(c => c.id === PL.ch.id) + 1;
+  $("#mini").classList.remove("hidden");
+  $("#miniCover").outerHTML = coverHTML(PL.book).replace('class="cover ', 'id="miniCover" class="cover ');
+  $("#miniTitle").textContent = PL.ch.title; $("#miniSub").textContent = b.title;
+  $("#pCover").outerHTML = coverHTML(PL.book, "pcover").replace('class="cover ', 'id="pCover" class="cover ');
+  $("#pBlur").style.background = `hsl(${b.hue ?? hueOf(b.title)} 50% 30%)`;
+  $("#pTitle").textContent = PL.ch.title; $("#pSub").textContent = b.title;
+  $("#pLabel").textContent = `Capitolul ${idx} din ${PL.list.length}`;
+  $("#favV").innerHTML = icon("heart", !!(ST.fav||{})[PL.book]); $("#tFav").classList.toggle("on", !!(ST.fav||{})[PL.book]);
+  if("mediaSession" in navigator){
+    try{ navigator.mediaSession.metadata = new MediaMetadata({title: PL.ch.title, artist: b.title, album: `Capitolul ${idx} din ${PL.list.length}`,
+      artwork: [{src: coverArt(PL.book), sizes: "512x512", type: "image/png"}]}); }catch(e){}
+  }
+  renderPlayState(); renderProgress();
+}
+function renderPlayState(){
+  const playing = !audio.paused;
+  $("#miniPlay").innerHTML = icon(playing ? "pause" : "play", true);
+  $("#pPlay").innerHTML = icon(playing ? "pause" : "play", true);
+  $("#pPlay").setAttribute("aria-label", playing ? "Pauză" : "Redă");
+  try{ navigator.mediaSession.playbackState = playing ? "playing" : "paused"; }catch(e){}
+}
+let seeking = false;
+function renderProgress(){
+  const d = audio.duration || PL.ch?.dur || 0, t = audio.currentTime || 0;
+  if(!seeking){ $("#seek").value = d ? Math.round(t/d*1000) : 0; }
+  $("#seek").style.setProperty("--p", (d ? t/d*100 : 0) + "%");
+  $("#tCur").textContent = fmtClock(seeking ? $("#seek").value/1000*d : t);
+  $("#tLeft").textContent = "-" + fmtClock(d - (seeking ? $("#seek").value/1000*d : t));
+  $("#miniProg").style.width = (d ? t/d*100 : 0) + "%";
+  if(Math.floor(t) % 5 === 0) mediaPos();
+}
+
+/* read-along text */
+async function loadTranscript(){
+  const r = $("#reader"); r.innerHTML = `<p style="color:var(--muted)">Se încarcă textul…</p>`; PL.cues = []; PL.spans = [];
+  const ch = PL.ch;
+  try{
+    const data = await B.transcript(PL.book, ch);
+    if(PL.ch !== ch) return;
+    let html = "";
+    for(const b of data.blocks || []){
+      const inner = b.s.map(s => { PL.cues.push(s.t); return `<span data-i="${PL.cues.length-1}">${esc(s.o)}</span>`; }).join(" ");
+      html += b.k === "h" ? `<h3>${inner}</h3>` : `<p>${inner}</p>`;
+    }
+    r.innerHTML = html; r.style.fontSize = prefs().textSize + "px";
+    PL.spans = [...r.querySelectorAll("span")]; PL.curIdx = -1; highlight(true);
+  }catch(e){ r.innerHTML = `<p style="color:var(--muted)">Textul nu e disponibil pentru acest capitol.</p>`; }
+}
+$("#reader").addEventListener("click", e => { const s = e.target.closest("span[data-i]"); if(!s) return; audio.currentTime = PL.cues[+s.dataset.i] + 0.01; if(audio.paused) audio.play(); });
+["touchstart","wheel"].forEach(ev => $("#reader").addEventListener(ev, () => PL.userScroll = Date.now(), {passive: true}));
+function highlight(force){
+  if(!PL.cues.length) return;
+  const t = audio.currentTime + 0.15; let lo = 0, hi = PL.cues.length - 1;
+  while(lo < hi){ const mid = (lo + hi + 1) >> 1; if(PL.cues[mid] <= t) lo = mid; else hi = mid - 1; }
+  if(lo === PL.curIdx && !force) return;
+  const prev = PL.curIdx; PL.curIdx = lo;
+  if(prev >= 0 && PL.spans[prev]) PL.spans[prev].classList.remove("cur");
+  if(force){ PL.spans.forEach((s, i) => s.classList.toggle("read", i < lo)); }
+  else if(prev >= 0 && PL.spans[prev]) PL.spans[prev].classList.add("read");
+  const s = PL.spans[lo]; if(!s) return; s.classList.add("cur"); s.classList.remove("read");
+  if($("#player").classList.contains("text") && Date.now() - PL.userScroll > 4000){
+    const r = $("#reader"); r.scrollTo({top: s.offsetTop - r.clientHeight * 0.35, behavior: force ? "auto" : "smooth"});
+  }
+}
+
+/* player UI wiring */
+function openPlayer(){ $("#player").classList.add("open"); setTextMode(PL.textOn); }
+function closePlayer(){ $("#player").classList.remove("open"); }
+function setTextMode(on){ PL.textOn = on; store.set("ab_text", on); $("#player").classList.toggle("text", on); $("#tText").classList.toggle("on", on); if(on) setTimeout(() => highlight(true), 50); }
+const fmtSpeed = r => (Math.round(r*100)/100).toString().replace(".", ",") + "×";
+function renderSleep(){
+  const on = PL.sleepAt || PL.sleepEnd; $("#tSleep").classList.toggle("on", !!on);
+  $("#sleepV").innerHTML = PL.sleepAt ? `<span style="font-size:13px">${Math.ceil((PL.sleepAt - Date.now())/60000)}m</span>` : PL.sleepEnd ? `<span style="font-size:12px">cap.</span>` : icon("moon");
+}
+setInterval(() => { if(PL.sleepAt) renderSleep(); }, 20000);
+
+$("#miniOpen").onclick = openPlayer; $("#miniCover").onclick = openPlayer;
+$("#miniPlay").onclick = togglePlay; $("#pPlay").onclick = togglePlay;
+$("#pClose").innerHTML = icon("down"); $("#pClose").onclick = closePlayer;
+$("#pChapters").innerHTML = icon("list"); $("#pChapters").onclick = () => chapterSheet();
+$("#pPrev").innerHTML = icon("prev", true); $("#pPrev").onclick = () => { if(audio.currentTime > 5) audio.currentTime = 0; else nextChapter(-1); };
+$("#pNext").innerHTML = icon("next", true); $("#pNext").onclick = () => nextChapter(1);
+function skipIcons(){ const p = prefs(); $("#pBack").innerHTML = icon("back") + `<em>${p.back}</em>`; $("#pFwd").innerHTML = icon("fwd") + `<em>${p.fwd}</em>`; $("#miniBack").innerHTML = icon("back"); }
+$("#pBack").onclick = () => skip(-prefs().back); $("#pFwd").onclick = () => skip(prefs().fwd); $("#miniBack").onclick = () => skip(-prefs().back);
+$("#seek").addEventListener("input", () => { seeking = true; renderProgress(); });
+$("#seek").addEventListener("change", () => { const d = audio.duration || PL.ch?.dur || 0; audio.currentTime = $("#seek").value/1000*d; seeking = false; persist(true); highlight(true); });
+$("#tText").onclick = () => setTextMode(!PL.textOn); $("#textV").innerHTML = icon("text");
+$("#tFav").onclick = () => toggleFav(PL.book);
+$("#tSpeed").onclick = () => sheet(`<h3>Viteza de redare</h3>` + [0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2].map(r =>
+  `<button class="opt ${Math.abs(audio.playbackRate - r) < .01 ? "on" : ""}" data-r="${r}">${fmtSpeed(r)}${r === 1 ? " · normal" : ""}${Math.abs(audio.playbackRate - r) < .01 ? icon("check") : ""}</button>`).join(""),
+  el => el.querySelectorAll("[data-r]").forEach(b => b.onclick = () => { const r = +b.dataset.r; audio.playbackRate = r; save("prefs/speed", r); closeSheet(); }));
+$("#tSleep").onclick = () => sheet(`<h3>Oprește redarea după</h3>` + [["off","Dezactivat"],[5,"5 minute"],[10,"10 minute"],[15,"15 minute"],[30,"30 de minute"],[45,"45 de minute"],[60,"o oră"],["end","Sfârșitul capitolului"]].map(([v, l]) =>
+  `<button class="opt" data-v="${v}">${l}</button>`).join(""),
+  el => el.querySelectorAll("[data-v]").forEach(b => b.onclick = () => { const v = b.dataset.v;
+    PL.sleepAt = 0; PL.sleepEnd = false;
+    if(v === "end") PL.sleepEnd = true; else if(v !== "off") PL.sleepAt = Date.now() + (+v)*60000;
+    renderSleep(); closeSheet(); toast(v === "off" ? "Somn dezactivat" : v === "end" ? "Se oprește la sfârșitul capitolului" : `Se oprește în ${v} min`); }));
+function chapterSheet(){
+  if(!PL.book) return;
+  sheet(`<h3>${esc(BOOKS[PL.book].title)}</h3>` + PL.list.map((c, i) => `<button class="opt ${c.id === PL.ch.id ? "on" : ""}" data-c="${esc(c.id)}">
+      <span style="text-align:left">${i+1}. ${esc(c.title)}</span><small style="color:var(--muted);flex:none;margin-left:10px">${chapterDone(c) ? "✓" : fmtDur(c.dur)}</small></button>`).join(""),
+    el => el.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { closeSheet(); playChapter(PL.book, b.dataset.c); }));
+}
+
+/* sheets + toast */
+function sheet(html, bind){ $("#sheetBody").innerHTML = html; bind && bind($("#sheetBody")); $("#sheet").classList.add("open"); $("#sheetBg").classList.add("open"); }
+function closeSheet(){ $("#sheet").classList.remove("open"); $("#sheetBg").classList.remove("open"); }
+$("#sheetBg").onclick = closeSheet;
+let toastT; function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600); }
+
+async function toggleFav(id){
+  const on = !(ST.fav||{})[id]; await save(`fav/${id}`, on ? true : null);
+  toast(on ? "Adăugată la favorite" : "Scoasă de la favorite");
+  if(PL.book === id) updateNowPlaying(); render();
+}
+
+/* =====================================================================
+   Views
+   ===================================================================== */
+const root = $("#root");
+function tile(id){
+  const b = BOOKS[id], p = bookProgress(id), fav = (ST.fav||{})[id];
+  return `<a class="tile" href="#/book/${encodeURIComponent(id)}">${coverHTML(id, "", fav ? `<span class="badge">${icon("heart", true)}</span>` : "")}
+    <div class="tt">${esc(b.title)}</div><div class="ts">${p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
+    ${p.started && p.pct < .995 ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div>` : ""}</a>`;
+}
+function bookIds(){ return Object.keys(BOOKS).sort((a, b) => (BOOKS[b].updated||0) - (BOOKS[a].updated||0)); }
+
+function viewHome(){
+  const ids = bookIds();
+  const last = ST.last && BOOKS[ST.last.book] ? ST.last.book : null;
+  const inProgress = ids.filter(id => { const p = bookProgress(id); return p.started && p.pct < .995 && id !== last; });
+  const favs = ids.filter(id => (ST.fav||{})[id]);
+  const hour = new Date().getHours(); const hi = hour < 12 ? "Bună dimineața" : hour < 18 ? "Bună ziua" : "Bună seara";
+  let cont = "";
+  if(last){ const r = resumePoint(last), p = bookProgress(last);
+    cont = `<div class="continue">${coverHTML(last)}<div class="meta"><div class="k">Continuă</div><div class="t">${esc(BOOKS[last].title)}</div>
+      <div class="c">${esc(r.ch.title)} · rămas ${fmtDur(p.left)}</div><div class="bar"><i style="width:${p.pct*100}%"></i></div></div>
+      <button class="playbig" id="contPlay" aria-label="Continuă">${icon(PL.book === last && !audio.paused ? "pause" : "play", true)}</button></div>`; }
+  root.innerHTML = `<div class="view">
+    <div class="top"><div><div class="hello">${hi}, ${esc(USER.name)}</div><h1>Acasă</h1></div><a class="avatar" href="#/profile">${esc((USER.name||"?")[0].toUpperCase())}</a></div>
+    ${cont || (ids.length ? `<div class="note">Alege o carte și apasă ▶. Aplicația ține minte unde ai rămas, pe orice dispozitiv.</div>` : "")}
+    ${inProgress.length ? `<h2 class="sec">În curs</h2><div class="shelf">${inProgress.map(tile).join("")}</div>` : ""}
+    ${favs.length ? `<h2 class="sec">Favorite</h2><div class="shelf">${favs.map(tile).join("")}</div>` : ""}
+    <h2 class="sec">Adăugate recent <a href="#/library">Toate</a></h2>
+    ${ids.length ? `<div class="shelf">${ids.slice(0, 10).map(tile).join("")}</div>` : `<div class="empty">Încă nu e nicio carte. Adaug-o din Studio, de pe Mac.</div>`}
+  </div>`;
+  const cp = $("#contPlay"); if(cp) cp.onclick = () => { if(PL.book === last && audio.src){ togglePlay(); render(); } else { const r = resumePoint(last); playChapter(last, r.ch.id, {t: r.t}); setTimeout(render, 300); } };
+}
+
+let libFilter = "all", libQuery = "";
+function viewLibrary(){
+  const f = [["all","Toate"],["prog","În curs"],["fav","Favorite"],["done","Terminate"],["new","Neîncepute"]];
+  root.innerHTML = `<div class="view"><div class="top"><h1>Bibliotecă</h1></div>
+    <label class="search">${icon("search")}<input id="q" type="search" placeholder="Caută o carte" value="${esc(libQuery)}"></label>
+    <div class="chips">${f.map(([k, l]) => `<button class="chip ${libFilter === k ? "on" : ""}" data-f="${k}">${l}</button>`).join("")}</div>
+    <div id="libGrid"></div></div>`;
+  const draw = () => {
+    const ids = bookIds().filter(id => { const p = bookProgress(id);
+      if(libQuery && !BOOKS[id].title.toLowerCase().includes(libQuery.toLowerCase())) return false;
+      return libFilter === "all" || (libFilter === "fav" && (ST.fav||{})[id]) || (libFilter === "prog" && p.started && p.pct < .995)
+        || (libFilter === "done" && p.pct >= .995) || (libFilter === "new" && !p.started); });
+    $("#libGrid").innerHTML = ids.length ? `<div class="grid">${ids.map(tile).join("")}</div>` : `<div class="empty">Nimic aici.</div>`;
+  };
+  root.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { libFilter = b.dataset.f; viewLibrary(); });
+  $("#q").addEventListener("input", e => { libQuery = e.target.value; draw(); });
+  draw();
+}
+
+function viewBook(id){
+  const b = BOOKS[id]; if(!b){ location.hash = "#/library"; return; }
+  const chs = chaptersOf(id), p = bookProgress(id), r = resumePoint(id), fav = (ST.fav||{})[id];
+  const playingThis = PL.book === id && !audio.paused;
+  const label = playingThis ? "Pauză" : p.pct >= .995 ? "Ascultă din nou" : p.started ? "Continuă" : "Ascultă";
+  root.innerHTML = `<div class="view"><div class="top"><button class="back" onclick="history.length > 1 ? history.back() : (location.hash='#/home')" aria-label="Înapoi">${icon("left")}</button></div>
+    <div class="bookhero">${coverHTML(id)}<h1>${esc(b.title)}</h1><div class="by">${esc(b.author || "")}</div>
+      <div class="facts"><span>${b.lang === "ro" ? "Română" : "Engleză"}</span><span>${chs.length} ${chs.length === 1 ? "capitol" : "capitole"}</span><span>${fmtDur(p.total)}</span></div></div>
+    <div class="actions"><button class="btn primary" id="bPlay">${icon(playingThis ? "pause" : "play", true)} ${label}</button>
+      <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button></div>
+    ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="progline">${p.pct >= .995 ? "Ai terminat cartea" : `${Math.round(p.pct*100)}% ascultat · rămas ${fmtDur(p.left)}`}</div>` : ""}
+    <h2 class="sec">Capitole</h2>
+    <div class="chs">${chs.map((c, i) => { const ps = posOf(c.id), done = chapterDone(c), cur = PL.ch && PL.ch.id === c.id;
+      const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
+      return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("head") : i+1}</span>
+        <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
+        ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`; }).join("")}</div></div>`;
+  $("#bPlay").onclick = () => { if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
+    playChapter(id, r.ch.id, {t: r.t, open: true}); };
+  $("#bFav").onclick = () => toggleFav(id);
+  root.querySelectorAll("[data-c]").forEach(el => el.onclick = () => playChapter(id, el.dataset.c, {open: true}));
+}
+
+function viewHistory(){
+  const items = Object.entries(ST.history || {}).map(([k, v]) => ({k, ...v})).filter(h => BOOKS[h.book]).sort((a, b) => b.at - a.at).slice(0, 150);
+  let html = "", lastDay = "";
+  for(const h of items){
+    const day = dayLabel(h.at); if(day !== lastDay){ html += `<div class="day">${day}</div>`; lastDay = day; }
+    const ch = (BOOKS[h.book].chapters || {})[h.ch]; const heard = Math.max(0, (h.to||0) - (h.from||0));
+    html += `<button class="hrow" data-b="${esc(h.book)}" data-c="${esc(h.ch)}" data-t="${h.to||0}">${coverHTML(h.book)}
+      <span class="x"><b>${esc(ch ? ch.title : "Capitol")}</b><small>${esc(BOOKS[h.book].title)} · ${heard > 30 ? "ascultat " + fmtDur(heard) : "pornit"} · ${fmtClock(h.from||0)}–${fmtClock(h.to||0)}</small></span>
+      <span class="when">${hhmm(h.at)}</span></button>`;
+  }
+  root.innerHTML = `<div class="view"><div class="top"><h1>Istoric</h1></div>${html || `<div class="empty">Ce asculți apare aici, cu ziua și ora.</div>`}</div>`;
+  root.querySelectorAll(".hrow").forEach(el => el.onclick = () => playChapter(el.dataset.b, el.dataset.c, {t: +el.dataset.t, open: true}));
+}
+
+function viewProfile(){
+  const ids = bookIds(), p = prefs();
+  const done = ids.filter(id => bookProgress(id).pct >= .995).length;
+  const chDone = ids.reduce((s, id) => s + chaptersOf(id).filter(chapterDone).length, 0);
+  const seg = (key, vals, fmt) => `<div class="seg" data-k="${key}">${vals.map(v => `<button class="${p[key] === v ? "on" : ""}" data-v="${v}">${fmt(v)}</button>`).join("")}</div>`;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  root.innerHTML = `<div class="view"><div class="top"><h1>Profil</h1></div>
+    <div class="continue" style="box-shadow:none"><div class="avatar" style="width:56px;height:56px;font-size:24px">${esc((USER.name||"?")[0].toUpperCase())}</div>
+      <div class="meta"><div class="t" style="margin:0">${esc(USER.name)}</div><div class="c">${esc(USER.email || "")}</div></div></div>
+    <div class="stats"><div class="stat"><b>${fmtDur((ST.stats||{}).sec || 0).replace(" min","m").replace(" h","h")}</b><span>ascultat</span></div>
+      <div class="stat"><b>${done}</b><span>${done === 1 ? "carte terminată" : "cărți terminate"}</span></div>
+      <div class="stat"><b>${chDone}</b><span>capitole</span></div></div>
+    <h2 class="sec">Preferințe</h2>
+    <div class="set">
+      <div class="setrow"><span>Viteză implicită</span>${seg("speed", [0.9, 1, 1.25, 1.5], fmtSpeed)}</div>
+      <div class="setrow"><span>Salt înapoi</span>${seg("back", [10, 15, 30], v => v + "s")}</div>
+      <div class="setrow"><span>Salt înainte</span>${seg("fwd", [15, 30, 60], v => v + "s")}</div>
+      <div class="setrow"><span>Mărime text</span>${seg("textSize", [16, 19, 23], v => v === 16 ? "A−" : v === 19 ? "A" : "A+")}</div>
+      <div class="setrow"><span>Capitolul următor pornește singur</span><button class="switch ${p.autoNext ? "on" : ""}" id="autoNext" aria-label="Redare automată"></button></div>
+    </div>
+    ${standalone ? "" : `<h2 class="sec">Pune aplicația pe ecranul telefonului</h2><div class="note">${ios
+      ? "În Safari apasă butonul Partajează (pătratul cu săgeată), apoi „Adaugă pe ecranul principal”. Aplicația se deschide ca una normală și merge și cu ecranul blocat."
+      : "În Chrome apasă meniul ⋮ și alege „Adaugă pe ecranul de pornire” sau „Instalează aplicația”."}</div>`}
+    ${USER.admin ? `<h2 class="sec">Cine are acces</h2><div class="set" id="adminBox"><div class="setrow"><span style="color:var(--muted)">Se încarcă…</span></div></div>` : ""}
+    <h2 class="sec">Cont</h2>
+    <div class="set">${B.mode === "local" ? `<div class="setrow"><span style="color:var(--muted);font-size:14px">Mod local: datele stau pe acest Mac.</span></div>` : ""}
+      <button class="setrow" style="width:100%" id="logout"><span class="linkbtn">Ieși din cont</span></button></div>
+  </div>`;
+  root.querySelectorAll(".seg").forEach(s => s.querySelectorAll("button").forEach(b => b.onclick = async () => {
+    const k = s.dataset.k, v = +b.dataset.v; await save("prefs/" + k, v);
+    if(k === "speed") audio.playbackRate = v; if(k === "back" || k === "fwd") skipIcons(); if(k === "textSize") $("#reader").style.fontSize = v + "px";
+    viewProfile(); }));
+  $("#autoNext").onclick = async () => { await save("prefs/autoNext", !prefs().autoNext); viewProfile(); };
+  if(USER.admin) drawAdmin();
+  $("#logout").onclick = async () => { if(!confirm("Ieși din cont?")) return; audio.pause(); persist(true); await B.signOut(); location.hash = "#/home"; location.reload(); };
+}
+
+async function drawAdmin(){
+  const box = $("#adminBox"); if(!box) return;
+  const [req, ok] = await Promise.all([B.requests(), B.allowedList()]).catch(() => [{}, {}]);
+  const person = (p, uid) => `<span style="min-width:0"><b style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name || p.email || uid)}</b>
+    <small style="color:var(--muted)">${esc(p.email || "")}</small></span>`;
+  const rows = Object.entries(req).map(([uid, p]) => `<div class="setrow">${person(p, uid)}<span style="display:flex;gap:8px;flex:none">
+      <button class="chip" data-deny="${esc(uid)}">Refuz</button><button class="chip on" data-ok="${esc(uid)}">Aprobă</button></span></div>`).join("")
+    + Object.entries(ok).map(([uid, p]) => `<div class="setrow">${person(p, uid)}<button class="chip" data-rev="${esc(uid)}">Scoate</button></div>`).join("");
+  box.innerHTML = rows || `<div class="setrow"><span style="color:var(--muted);font-size:14px">Când cineva își face cont, cererea apare aici. Trimite-le linkul aplicației.</span></div>`;
+  box.querySelectorAll("[data-ok]").forEach(b => b.onclick = async () => { await B.approve(b.dataset.ok, req[b.dataset.ok]); toast("Acces aprobat"); drawAdmin(); });
+  box.querySelectorAll("[data-deny]").forEach(b => b.onclick = async () => { await B.deny(b.dataset.deny); drawAdmin(); });
+  box.querySelectorAll("[data-rev]").forEach(b => b.onclick = async () => { if(!confirm("Scoți accesul acestei persoane?")) return; await B.revoke(b.dataset.rev); drawAdmin(); });
+}
+
+function viewLogin(){
+  $("#tabs").classList.add("hidden"); $("#mini").classList.add("hidden");
+  let mode = "in";
+  const draw = () => {
+    root.innerHTML = `<div class="login"><img class="logo" src="icon-192.png" alt=""><h1>Cărți audio</h1>
+      <p class="sub">${B.mode === "local" ? "Mod local, pe acest Mac" : mode === "in" ? "Intră în contul tău" : "Creează-ți contul"}</p>
+      <form id="f">
+        ${B.mode === "local" ? `<label class="field"><input id="name" placeholder="Numele tău" autocomplete="name" required></label>` : `
+        ${mode === "up" ? `<label class="field"><input id="name" placeholder="Numele tău" autocomplete="name"></label>` : ""}
+        <label class="field"><input id="email" type="email" placeholder="Email" autocomplete="email" required></label>
+        <label class="field"><input id="pass" type="password" placeholder="Parolă" autocomplete="${mode === "in" ? "current-password" : "new-password"}" required minlength="6"></label>`}
+        <div class="err" id="err"></div>
+        <button class="btn primary" type="submit">${mode === "in" ? "Intră" : "Creează cont"}</button>
+      </form>
+      ${B.mode === "local" ? "" : `<div class="alt">${mode === "in" ? `Nu ai cont? <a href="#" class="linkbtn" id="sw">Creează unul</a><br><a href="#" class="linkbtn" id="reset" style="font-weight:500;font-size:14px;display:inline-block;margin-top:12px">Am uitat parola</a>`
+        : `Ai deja cont? <a href="#" class="linkbtn" id="sw">Intră</a>`}</div>`}</div>`;
+    const sw = $("#sw"); if(sw) sw.onclick = e => { e.preventDefault(); mode = mode === "in" ? "up" : "in"; draw(); };
+    const rs = $("#reset"); if(rs) rs.onclick = async e => { e.preventDefault(); const em = $("#email").value.trim(); if(!em){ $("#err").textContent = "Scrie emailul mai sus, apoi apasă din nou."; return; }
+      try{ await B.resetPassword(em); $("#err").textContent = "Ți-am trimis un email pentru resetarea parolei."; }catch(err){ $("#err").textContent = authErr(err); } };
+    $("#f").onsubmit = async e => {
+      e.preventDefault(); $("#err").textContent = ""; const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true;
+      try{
+        if(B.mode === "local") await B.signIn($("#name").value.trim());
+        else if(mode === "in") await B.signIn($("#email").value.trim(), $("#pass").value);
+        else await B.signUp($("#email").value.trim(), $("#pass").value, ($("#name")?.value || "").trim());
+        if(B.mode === "local") onUser(store.get("ab_local_user"));
+      }catch(err){ $("#err").textContent = authErr(err); btn.disabled = false; }
+    };
+  };
+  draw();
+}
+function authErr(e){
+  const m = {"auth/invalid-credential":"Email sau parolă greșită.","auth/wrong-password":"Email sau parolă greșită.","auth/user-not-found":"Nu există cont cu acest email.",
+    "auth/email-already-in-use":"Există deja un cont cu acest email. Intră în el.","auth/weak-password":"Parola trebuie să aibă cel puțin 6 caractere.",
+    "auth/invalid-email":"Emailul nu pare corect.","auth/network-request-failed":"Nu e conexiune la internet.","auth/too-many-requests":"Prea multe încercări. Mai încearcă peste câteva minute."};
+  return m[e.code] || e.message || String(e);
+}
+
+/* =====================================================================
+   Router
+   ===================================================================== */
+function render(){
+  if(!USER) return;
+  const [ , tab = "home", arg] = (location.hash || "#/home").split("/");
+  document.querySelectorAll("nav.tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === tab || (tab === "book" && a.dataset.tab === "library")));
+  if(tab === "library") viewLibrary(); else if(tab === "book") viewBook(decodeURIComponent(arg || ""));
+  else if(tab === "history") viewHistory(); else if(tab === "profile") viewProfile(); else viewHome();
+}
+window.addEventListener("hashchange", () => { closeSheet(); render(); window.scrollTo(0, 0); });
+const tabsEl = $("#tabs");
+tabsEl.querySelector('[data-tab="home"]').innerHTML = icon("home") + "Acasă";
+tabsEl.querySelector('[data-tab="library"]').innerHTML = icon("lib") + "Bibliotecă";
+tabsEl.querySelector('[data-tab="history"]').innerHTML = icon("hist") + "Istoric";
+tabsEl.querySelector('[data-tab="profile"]').innerHTML = icon("user") + "Profil";
+
+async function onUser(u){
+  USER = u;
+  if(!u){ viewLogin(); return; }
+  root.innerHTML = `<div class="loading">Se încarcă biblioteca…</div>`;
+  try{ [BOOKS, ST] = await Promise.all([B.books(), B.state()]); }
+  catch(e){
+    // signed in, but not approved yet: leave a request for the admin
+    try{ await B.requestAccess(u.name); }catch(err){}
+    root.innerHTML = `<div class="login"><img class="logo" src="icon-192.png" alt=""><h1>Aproape gata</h1>
+      <p class="sub">Contul <b>${esc(u.email || "")}</b> a fost creat. Am trimis o cerere de acces — după ce e aprobată, apasă „Verifică din nou”.</p>
+      <button class="btn primary" id="again">Verifică din nou</button>
+      <div class="alt"><a href="#" class="linkbtn" id="lo">Ieși din cont</a></div></div>`;
+    $("#again").onclick = () => onUser(u);
+    $("#lo").onclick = async ev => { ev.preventDefault(); await B.signOut(); location.reload(); }; return;
+  }
+  USER.admin = B.isAdmin ? await B.isAdmin().catch(() => false) : false;
+  BOOKS = BOOKS || {}; ST = ST || {};
+  tabsEl.classList.remove("hidden");
+  audio.playbackRate = prefs().speed; $("#speedV").textContent = fmtSpeed(prefs().speed);
+  skipIcons(); renderSleep(); setTextMode(PL.textOn); $("#player").classList.remove("open");
+  render();
+  // restore the mini player where you left off (paused)
+  if(ST.last && BOOKS[ST.last.book] && !PL.ch){ const r = resumePoint(ST.last.book); if(r) playChapter(ST.last.book, r.ch.id, {t: r.t, autoplay: false}); }
+}
+
+(async function start(){
+  setupMediaSession();
+  const cfg = window.FB_CONFIG;
+  B = (!LOCAL && cfg && cfg.apiKey) ? await FirebaseBackend(cfg) : LocalBackend();
+  B.init(onUser);
+  if("serviceWorker" in navigator && isSecureContext && !LOCAL) navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>
