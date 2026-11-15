@@ -372,7 +372,7 @@ async function FirebaseBackend(cfg){
     async resetPassword(email){ await A.sendPasswordResetEmail(auth, email); },
     async books(){ return (await val("ab/books")) || {}; },
     async audioUrl(bookId, ch){ if(!ch.audio) throw new Error("capitol fără audio"); return ch.audio; },
-    async transcript(bookId, ch){ return (await fetch(ch.text)).json(); },
+    async transcript(bookId, ch){ const t = await val(`ab/texts/${bookId}/${ch.id}`); if(!t) throw new Error("fără text"); return JSON.parse(t); },
     async state(){ return (await val(`ab/users/${me().uid}`)) || {}; },
     async write(path, value){ await D.set(uref(path), value); },
     async addHistory(entry){ const r = D.push(uref("history")); await D.set(r, entry); return r.key; },
