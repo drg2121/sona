@@ -27,6 +27,10 @@
   :root{ --bg:#f6f5fb; --bg2:#ecebf6; --card:#ffffff; --card2:#f0eefa; --ink:#1b1830; --muted:#625d7d; --faint:#a19cbb;
     --line:#e3e0f1; --accent:#534AB7; --accent-ink:#fff; --brand:#534AB7; --ok:#2f7d4f; --shadow:0 10px 30px rgba(40,30,110,.14); }
 }
+html[data-theme="light"]{--bg:#f6f5fb; --bg2:#ecebf6; --card:#ffffff; --card2:#f0eefa; --ink:#1b1830; --muted:#625d7d; --faint:#a19cbb;
+    --line:#e3e0f1; --accent:#534AB7; --accent-ink:#fff; --brand:#534AB7; --ok:#2f7d4f; --shadow:0 10px 30px rgba(40,30,110,.14);}
+html[data-theme="dark"]{--bg:#110f1c; --bg2:#181528; --card:#1f1b33; --card2:#29243f; --ink:#f3f1fc; --muted:#a8a3c6; --faint:#6f6a92;
+  --line:#2f2a4a; --accent:#9d95ff; --accent-ink:#13102a; --brand:#534AB7; --ok:#62c48f; --shadow:0 10px 30px rgba(5,3,20,.55);}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
 body{min-height:100vh;overscroll-behavior-y:none}
@@ -184,6 +188,25 @@ nav.tabs a.on{color:var(--accent)}
 .week .d.today i{background:var(--accent)}
 .week .d small{font-size:11px;color:var(--muted);font-weight:650}
 .weeksum{font-size:14px;color:var(--muted);margin:-4px 2px 10px}
+.offpill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#b26b00;background:color-mix(in srgb,#f0a020 18%,transparent);padding:5px 10px;border-radius:99px}
+.offpill svg{width:14px;height:14px}
+.streak{display:inline-flex;align-items:center;gap:8px;margin:6px 0 0;padding:8px 14px;border-radius:99px;background:var(--card);font-size:14px;font-weight:650;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.streak svg{width:18px;height:18px;color:#f07a1a}
+.dlrow{display:flex;align-items:center;gap:10px;margin:10px 0 0;font-size:14px;color:var(--muted)}
+.dlrow .btn{height:42px;font-size:14px}
+.chrow .dl{color:var(--ok);flex:none}
+.chrow .dl svg{width:18px;height:18px}
+.onb{position:fixed;inset:0;z-index:90;background:var(--bg);display:flex;flex-direction:column;padding:calc(var(--safe-t) + 20px) 26px calc(var(--safe-b) + 24px)}
+.onb .slides{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -26px}
+.onb .slides::-webkit-scrollbar{display:none}
+.onb .sl{flex:none;width:100%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 30px}
+.onb .art{width:150px;height:150px;border-radius:40px;display:grid;place-items:center;margin-bottom:30px;color:#fff;background:linear-gradient(150deg,#7a70e6,#3d348f);box-shadow:0 18px 40px rgba(83,74,183,.35)}
+.onb .art svg{width:70px;height:70px}
+.onb h2{font:700 28px/1.15 var(--serif);margin:0 0 12px}
+.onb p{color:var(--muted);font-size:17px;line-height:1.5;margin:0;max-width:420px}
+.onb .dots{display:flex;justify-content:center;gap:8px;margin:18px 0}
+.onb .dots i{width:8px;height:8px;border-radius:50%;background:var(--line);transition:.2s}
+.onb .dots i.on{background:var(--accent);width:22px;border-radius:9px}
 .shelf{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 8px;scrollbar-width:none}
 .shelf::-webkit-scrollbar{display:none}
 .shelf .tile{width:118px;flex:none;scroll-snap-align:start}
@@ -237,7 +260,7 @@ nav.tabs a.on{color:var(--accent)}
 .hrow .x b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hrow .x small{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hrow .when{font-size:12px;color:var(--faint);flex:none}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 6px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:8px 0 6px}
 .stat{background:var(--card);border-radius:16px;padding:14px 10px;text-align:center}
 .stat b{display:block;font:700 22px/1.1 var(--serif)}
 .stat span{font-size:12px;color:var(--muted)}
@@ -424,6 +447,7 @@ nav.tabs a.on{color:var(--accent)}
 <div id="ptr" aria-hidden="true"></div>
 <audio id="audio" preload="metadata" playsinline></audio>
 
+<script>try{const t=JSON.parse(localStorage.getItem("ab_theme")||'"auto"');if(t!=="auto")document.documentElement.dataset.theme=t;}catch(e){}</script>
 <script src="firebase-config.js"></script>
 <script type="module">
 /* =====================================================================
@@ -452,6 +476,12 @@ const P = {
   refresh:'<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  dl:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  cloudoff:'<path d="M3 3l18 18M7 18h10a4 4 0 0 0 1.6-7.7A6 6 0 0 0 8 8.3M5.5 10.5A4 4 0 0 0 7 18"/>',
+  flame:'<path d="M12 22c4 0 7-2.8 7-7 0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8 0 4.2 3 7 7 7z"/>',
+  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-9 8"/>',
+  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.6-5.5 6.5-5.5s5.5 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2 .7 3.2 2.6 3.7 5.5"/>',
   more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   bookmark:'<path d="M6 3h12v18l-6-4.5L6 21z"/>',
   edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
@@ -549,6 +579,7 @@ async function FirebaseBackend(cfg){
     async revoke(uid){ await D.set(D.ref(db, `ab/allowed/${uid}`), null); },
     async addBook(url, whole, collection){ const r = D.push(D.ref(db, "ab/inbox")); await D.set(r, {url, whole: !!whole, collection: collection || "", status: "nou", at: Date.now(), by: me().uid}); },
     async setCollection(id, name){ await D.set(D.ref(db, `ab/books/${id}/collection`), name); },
+    async setCover(id, url){ await D.set(D.ref(db, `ab/books/${id}/cover`), url); },
     async bookRequests(){ return (await val("ab/inbox")) || {}; },
   };
 }
@@ -615,6 +646,39 @@ function coverArt(id){
 }
 
 /* =====================================================================
+   Offline: downloaded books live in the phone's cache
+   ===================================================================== */
+const AUDIO_CACHE = "sona-audio";
+const DL = { get(){ return store.get("ab_dl", {}); }, set(v){ store.set("ab_dl", v); } };
+const isDownloaded = cid => !!DL.get()[cid];
+const textKey = (bookId, cid) => `${location.origin}/__text/${encodeURIComponent(bookId)}/${encodeURIComponent(cid)}`;
+async function cachedAudioUrl(ch){
+  if(!("caches" in window) || !ch.audio || !isDownloaded(ch.id)) return null;
+  try{ const c = await caches.open(AUDIO_CACHE); const r = await c.match(ch.audio); if(!r) return null;
+    if(r.type === "opaque") return ch.audio;            // the service worker hands it to the player
+    return URL.createObjectURL(await r.blob()); }catch(e){ return null; }
+}
+async function downloadBook(id, onProgress){
+  const chs = chaptersOf(id).filter(c => c.audio); const c = await caches.open(AUDIO_CACHE); const dl = DL.get(); let i = 0, opaque = 0;
+  for(const ch of chs){
+    i++; onProgress && onProgress(i, chs.length);
+    if(!dl[ch.id]){
+      try{ const r = await fetch(ch.audio, {mode: "cors"}); if(!r.ok) throw 0; await c.put(ch.audio, r); }
+      catch(e){ await c.add(new Request(ch.audio, {mode: "no-cors"})); opaque++; }   // works where the browser allows it
+      try{ const t = await B.transcript(id, ch); await c.put(textKey(id, ch.id), new Response(JSON.stringify(t), {headers: {"Content-Type": "application/json"}})); }catch(e){}
+      dl[ch.id] = Date.now(); DL.set(dl);
+    }
+  }
+  return {count: chs.length, opaque};
+}
+async function removeDownload(id){
+  const c = await caches.open(AUDIO_CACHE); const dl = DL.get();
+  for(const ch of chaptersOf(id)){ if(ch.audio) await c.delete(ch.audio); await c.delete(textKey(id, ch.id)); delete dl[ch.id]; }
+  DL.set(dl);
+}
+const bookDownloaded = id => { const chs = chaptersOf(id).filter(c => c.audio); return chs.length > 0 && chs.every(c => isDownloaded(c.id)); };
+
+/* =====================================================================
    Player
    ===================================================================== */
 const audio = $("#audio");
@@ -630,7 +694,7 @@ async function playChapter(bookId, chId, {t = null, autoplay = true, open = fals
   if(open) openPlayer();
   if(!same){
     let url = PL.nextUrl && PL.nextUrl.id === ch.id ? PL.nextUrl.url : null;
-    try{ url = url || await B.audioUrl(bookId, ch); }catch(e){ console.warn("audio", e); toast("Nu pot porni redarea. Verifică internetul și încearcă din nou."); PL.ch = null; return; }
+    try{ url = url || await cachedAudioUrl(ch) || await B.audioUrl(bookId, ch); }catch(e){ console.warn("audio", e); toast("Nu pot porni redarea. Verifică internetul și încearcă din nou."); PL.ch = null; return; }
     audio.src = url;
     audio.playbackRate = prefs().speed;
     const start = t ?? (chapterDone(ch) ? 0 : (posOf(ch.id)?.t || 0));
@@ -757,7 +821,9 @@ async function loadTranscript(){
   const r = $("#reader"); r.innerHTML = `<p style="color:var(--muted)">Se încarcă textul…</p>`; PL.cues = []; PL.spans = [];
   const ch = PL.ch;
   try{
-    const data = await B.transcript(PL.book, ch);
+    let data = null;
+    if(isDownloaded(ch.id)){ try{ const r = await (await caches.open(AUDIO_CACHE)).match(textKey(PL.book, ch.id)); if(r) data = await r.json(); }catch(e){} }
+    if(!data) data = await B.transcript(PL.book, ch);
     if(PL.ch !== ch) return;
     let html = "";
     for(const b of data.blocks || []){
@@ -861,12 +927,15 @@ function tile(id){
     <div class="tt">${esc(b.title)}</div><div class="ts">${p.pct >= .995 ? "Terminată ✓" : p.started ? `${Math.round(p.pct*100)}% · rămas ${fmtDur(p.left)}` : fmtDur(p.total)}</div>
     ${p.started && p.pct < .995 ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div>` : ""}</a>`;
 }
+function offlinePill(){ return navigator.onLine ? "" : `<span class="offpill">${icon("cloudoff")}Offline</span>`; }
+window.addEventListener("online", () => { render(); toast("Ești din nou online"); });
+window.addEventListener("offline", () => render());
 function avatarInner(){
   const initial = esc(((USER && USER.name) || "?").trim()[0].toUpperCase());
   return USER && USER.photo ? `<img src="${esc(USER.photo)}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode('${initial}'))">` : initial;
 }
 function appbar(left){
-  return `<header class="appbar">${left || `<a class="brand" href="#/home"><img src="icon-192.png" alt="">Sona</a>`}<a class="avatar" href="#/profile" aria-label="Profil">${avatarInner()}</a></header>`;
+  return `<header class="appbar">${left || `<a class="brand" href="#/home"><img src="icon-192.png" alt="">Sona</a>`}<span style="display:flex;gap:10px;align-items:center">${offlinePill()}<a class="avatar" href="#/profile" aria-label="Profil">${avatarInner()}</a></span></header>`;
 }
 const firstName = () => ((USER && USER.name) || "").trim().split(/\s+/)[0];
 function bookmarksOf(bookId){
@@ -914,7 +983,7 @@ function chapterRow(c, i){
   const part = !done && ps && ps.t > 5 ? ps.t / (c.dur || 1) : 0;
   return `<button class="chrow ${cur ? "cur" : ""}" data-c="${esc(c.id)}"><span class="n">${cur && !audio.paused ? icon("wave") : i+1}</span>
     <span class="x"><b>${esc(c.title)}</b><small>${done ? "Ascultat" : part ? `rămas ${fmtDur((c.dur||0) - ps.t)}` : fmtDur(c.dur)}</small>${part ? `<div class="bar"><i style="width:${part*100}%"></i></div>` : ""}</span>
-    ${done ? `<span class="done">${icon("check")}</span>` : ""}</button>`;
+    ${done ? `<span class="done">${icon("check")}</span>` : ""}${isDownloaded(c.id) ? `<span class="dl" title="Descărcat">${icon("dl")}</span>` : ""}</button>`;
 }
 const collectionOf = id => (BOOKS[id] && BOOKS[id].collection) || (isDaily(id) ? "JW" : "General");
 function collections(){
@@ -945,6 +1014,13 @@ function bindDaily(){
     playChapter(b.dataset.b, b.dataset.c, {t: chapterDone({id: b.dataset.c}) ? 0 : null}); };
 }
 
+function streakDays(){
+  const days = new Set(Object.values(ST.history || {}).filter(h => (h.to || 0) - (h.from || 0) > 20 && h.at).map(h => new Date(h.at).toDateString()));
+  const d = new Date(); let n = 0;
+  if(!days.has(d.toDateString())) d.setDate(d.getDate() - 1);   // today not yet: count up to yesterday
+  while(days.has(d.toDateString())){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
 function viewHome(){
   const ids = bookIds();
   const regular = ids.filter(id => !isDaily(id));
@@ -964,7 +1040,9 @@ function viewHome(){
   const rest = ids.filter(id => !shownIds.has(id));
   let next = [];
   if(hero){ const chs = chaptersOf(hero), r = resumePoint(hero), i = Math.max(0, chs.findIndex(c => c.id === r.ch.id)); next = chs.slice(i, i + 4).map(c => [c, chs.indexOf(c)]); }
+  const streak = streakDays();
   root.innerHTML = `<div class="view">${appbar()}
+    ${streak >= 2 ? `<div class="streak">${icon("flame", true)} ${streak} zile la rând</div>` : ""}
     ${cards.length ? `<h2 class="sec" style="margin-top:12px">Acum</h2>
     <div class="now">${cards.map((c, i) => { const playing = PL.ch && PL.ch.id === c.ch.id && !audio.paused;
       return `<div class="nowc"><a class="cv" href="#/book/${encodeURIComponent(c.book)}">${coverHTML(c.book)}
@@ -1082,6 +1160,9 @@ function viewBook(id){
       <button class="btn sq ${fav ? "on" : ""}" id="bFav" aria-label="Favorit">${icon("heart", fav)}</button>
       <button class="btn sq" id="bMore" aria-label="Mai multe">${icon("more")}</button></div>
     ${p.started ? `<div class="bar"><i style="width:${p.pct*100}%"></i></div><div class="progline">${p.pct >= .995 ? "Ai terminat cartea" : `${Math.round(p.pct*100)}% ascultat · rămas ${fmtDur(p.left)}`}</div>` : ""}
+    <div class="dlrow">${B.mode === "local" ? "" : bookDownloaded(id)
+      ? `<span style="color:var(--ok);display:flex;gap:6px;align-items:center">${icon("check")} Descărcată: merge și fără internet</span>`
+      : `<button class="btn plain" id="bDl" style="margin:0">${icon("dl")} Descarcă pentru ascultare fără internet</button>`}</div>
     <h2 class="sec">Capitole</h2>
     <div class="chs">${chs.map((c, i) => chapterRow(c, i)).join("")}</div>
     ${bookmarksOf(id).length ? `<h2 class="sec">Semne de carte</h2><div class="set" id="bmList">${bookmarkRows(id)}</div>` : ""}</div>`;
@@ -1090,6 +1171,14 @@ function viewBook(id){
     if(PL.book === id && audio.src && (playingThis || PL.ch.id === r.ch.id)){ togglePlay(); setTimeout(render, 200); return; }
     playChapter(id, r.ch.id, {t: r.t, open: true}); };
   $("#bMore").onclick = () => moreSheet(id);
+  const dlb = $("#bDl"); if(dlb) dlb.onclick = async () => {
+    if(!navigator.onLine){ toast("Pentru descărcare ai nevoie de internet"); return; }
+    dlb.disabled = true;
+    try{ const r = await downloadBook(id, (i, n) => { dlb.innerHTML = `${icon("dl")} Se descarcă ${i} din ${n}…`; });
+      toast(r.opaque ? "Descărcată (pe unele telefoane redarea offline cere încă o setare)" : "Descărcată: o poți asculta și în modul avion"); }
+    catch(e){ toast("Descărcarea s-a oprit: " + (e.message || e)); }
+    render();
+  };
   $("#bFav").onclick = () => toggleFav(id);
   const cp = $("#colPill"); if(cp && !cp.disabled) cp.onclick = () => collectionSheet(id);
   bindBookmarks(id);
@@ -1101,12 +1190,29 @@ function moreSheet(id){
   sheet(`<h3>${esc(BOOKS[id].title)}</h3>
     <button class="opt" id="mReset"><span>Ascultă din nou de la început</span>${icon("back")}</button>
     ${n ? `<button class="opt" id="mMarks"><span>Semne de carte (${n})</span>${icon("bookmark")}</button>` : ""}
-    ${USER.admin && B.mode !== "local" ? `<button class="opt" id="mCol"><span>Mută în altă colecție</span>${icon("edit")}</button>` : ""}
+    ${bookDownloaded(id) || chaptersOf(id).some(c => isDownloaded(c.id)) ? `<button class="opt" id="mRmDl"><span>Șterge descărcarea de pe telefon</span>${icon("trash")}</button>` : ""}
+    ${USER.admin && B.mode !== "local" ? `<button class="opt" id="mCol"><span>Mută în altă colecție</span>${icon("edit")}</button>
+      <button class="opt" id="mCover"><span>Schimbă coperta</span>${icon("image")}</button>` : ""}
     <div style="color:var(--muted);font-size:13px;margin-top:10px">${p.started ? `${Math.round(p.pct*100)}% ascultat` : "Neînceput"} · ${chaptersOf(id).length} capitole · ${fmtDur(p.total)}</div>`,
     el => {
       $("#mReset").onclick = () => resetSheet(id);
       const mm = $("#mMarks"); if(mm) mm.onclick = () => { closeSheet(); setTimeout(() => $("#bmList")?.scrollIntoView({behavior: "smooth", block: "start"}), 250); };
       const mc = $("#mCol"); if(mc) mc.onclick = () => collectionSheet(id);
+      const rd = $("#mRmDl"); if(rd) rd.onclick = async () => { await removeDownload(id); closeSheet(); toast("Descărcarea a fost ștearsă"); render(); };
+      const mv = $("#mCover"); if(mv) mv.onclick = () => coverSheet(id);
+    });
+}
+function coverSheet(id){
+  sheet(`<h3>Coperta cărții</h3><p style="color:var(--muted);font-size:14px;margin:0 0 10px">Lipește linkul unei imagini (de exemplu coperta de pe site-ul editurii). Gol = coperta generată.</p>
+    <input type="url" id="covUrl" placeholder="https://…/coperta.jpg" value="${esc(BOOKS[id].cover || "")}">
+    <div id="covPrev" style="margin:12px auto 0;width:120px"></div>
+    <button class="btn primary" id="covSave" style="width:100%;margin-top:12px">Salvează coperta</button>`, el => {
+      const prev = () => { const u = $("#covUrl").value.trim(); $("#covPrev").innerHTML = u ? `<div class="cover img" style="width:120px"><img src="${esc(u)}" alt=""></div>` : ""; };
+      $("#covUrl").addEventListener("input", prev); prev();
+      $("#covSave").onclick = async () => { const u = $("#covUrl").value.trim() || null;
+        if(u && !/^https:\/\//.test(u)){ toast("Linkul trebuie să înceapă cu https://"); return; }
+        try{ await B.setCover(id, u); BOOKS[id].cover = u || undefined; delete artCache[id]; saveCache(); closeSheet(); toast("Coperta a fost salvată"); render(); }
+        catch(e){ toast("Nu s-a putut salva: " + (e.code || e.message)); } };
     });
 }
 function resetSheet(id){
@@ -1168,6 +1274,7 @@ function viewProfile(){
       <div class="meta"><div class="t" style="margin:0">${esc(USER.name)}</div><div class="c">${esc(USER.email || "")}</div></div></div>
     ${weekChart()}
     <div class="stats"><div class="stat"><b>${fmtDur((ST.stats||{}).sec || 0).replace(" min","m").replace(" h","h")}</b><span>ascultat</span></div>
+      <div class="stat"><b>${streakDays()}</b><span>zile la rând</span></div>
       <div class="stat"><b>${done}</b><span>${done === 1 ? "carte terminată" : "cărți terminate"}</span></div>
       <div class="stat"><b>${chDone}</b><span>capitole</span></div></div>
     <h2 class="sec">Preferințe</h2>
@@ -1175,6 +1282,8 @@ function viewProfile(){
       <div class="setrow"><span>Viteză implicită</span>${seg("speed", [0.9, 1, 1.25, 1.5], fmtSpeed)}</div>
       <div class="setrow"><span>Salt înapoi</span>${seg("back", [10, 15, 30], v => v + "s")}</div>
       <div class="setrow"><span>Salt înainte</span>${seg("fwd", [15, 30, 60], v => v + "s")}</div>
+      <div class="setrow"><span>Aspect</span><div class="seg" id="themeSeg">${[["auto","Automat"],["light","Luminos"],["dark","Întunecat"]].map(([k, l]) =>
+        `<button class="${store.get("ab_theme", "auto") === k ? "on" : ""}" data-t="${k}">${l}</button>`).join("")}</div></div>
       <div class="setrow"><span>Mărime text</span>${seg("textSize", [16, 19, 23], v => v === 16 ? "A−" : v === 19 ? "A" : "A+")}</div>
       <div class="setrow"><span>Capitolul următor pornește singur</span><button class="switch ${p.autoNext ? "on" : ""}" id="autoNext" aria-label="Redare automată"></button></div>
     </div>
@@ -1182,6 +1291,8 @@ function viewProfile(){
       ? "În Safari apasă butonul Partajează (pătratul cu săgeată), apoi „Adaugă pe ecranul principal”. Aplicația se deschide ca una normală și merge și cu ecranul blocat."
       : "În Chrome apasă meniul ⋮ și alege „Adaugă pe ecranul de pornire” sau „Instalează aplicația”."}</div>`}
     ${USER.admin ? `<h2 class="sec">Cine are acces</h2><div class="set" id="adminBox"><div class="setrow"><span style="color:var(--muted)">Se încarcă…</span></div></div>` : ""}
+    <h2 class="sec">Ajutor</h2>
+    <div class="set"><button class="setrow" style="width:100%" id="howTo"><span>Cum funcționează Sona</span><span style="color:var(--faint)">›</span></button></div>
     <h2 class="sec">Cont</h2>
     <div class="set">${B.mode === "local" ? `<div class="setrow"><span style="color:var(--muted);font-size:14px">Mod local: datele stau pe acest Mac.</span></div>` : ""}
       <button class="setrow" style="width:100%" id="logout"><span class="linkbtn">Ieși din cont</span></button></div>
@@ -1192,6 +1303,9 @@ function viewProfile(){
     viewProfile(); }));
   $("#autoNext").onclick = async () => { await save("prefs/autoNext", !prefs().autoNext); viewProfile(); };
   if(USER.admin) drawAdmin();
+  root.querySelectorAll("#themeSeg [data-t]").forEach(b => b.onclick = () => { const t = b.dataset.t; store.set("ab_theme", t);
+    if(t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; viewProfile(); });
+  const hw = $("#howTo"); if(hw) hw.onclick = () => showOnboarding(true);
   $("#logout").onclick = async () => { if(!confirm("Ieși din cont?")) return; audio.pause(); persist(true); await B.signOut(); location.hash = "#/home"; location.reload(); };
 }
 
@@ -1233,8 +1347,36 @@ async function drawAdmin(){
   box.querySelectorAll("[data-rev]").forEach(b => b.onclick = async () => { if(!confirm("Scoți accesul acestei persoane?")) return; await B.revoke(b.dataset.rev); drawAdmin(); });
 }
 
+function showOnboarding(force){
+  if(!force && store.get("ab_onboarded", false)) return Promise.resolve();
+  return new Promise(done => {
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const slides = [
+      ["wave", "Bun venit în Sona", "Cărți și articole citite cu o voce naturală. Asculți oriunde, chiar și cu ecranul blocat, și urmărești textul în timp ce e citit."],
+      ["bookmark", "Ține minte unde ai rămas", "Pe telefon, tabletă sau calculator continui exact de unde ai rămas. Pui semne de carte, alegi viteza și oprirea automată."],
+      ["dl", "Și fără internet", "Descarcă o carte și ascult-o în avion sau unde nu ai semnal. Biblioteca e împărțită pe colecții."],
+      ["phone", "Pune-o pe ecranul telefonului", ios ? "În Safari apasă Partajează, apoi „Adaugă pe ecranul principal”. Sona se deschide apoi ca o aplicație." : "În Chrome apasă meniul ⋮, apoi „Instalează aplicația”."],
+      ["users", "Intră cu contul tău", "Intră cu Google sau cu email. La primul cont nou, administratorul aprobă accesul la bibliotecă."],
+    ];
+    const el = document.createElement("div"); el.className = "onb";
+    el.innerHTML = `<div style="display:flex;justify-content:flex-end"><button class="linkbtn" id="obSkip" style="font-weight:650">Sari</button></div>
+      <div class="slides" id="obS">${slides.map(([ic, h, t]) => `<div class="sl"><div class="art">${icon(ic)}</div><h2>${h}</h2><p>${t}</p></div>`).join("")}</div>
+      <div class="dots">${slides.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>
+      <button class="btn primary" id="obNext" style="width:100%;flex:none">Continuă</button>`;
+    document.body.appendChild(el);
+    const s = el.querySelector("#obS"), dots = [...el.querySelectorAll(".dots i")];
+    const idx = () => Math.round(s.scrollLeft / s.clientWidth);
+    const finish = () => { store.set("ab_onboarded", true); el.remove(); done(); };
+    s.addEventListener("scroll", () => { const i = idx(); dots.forEach((d, k) => d.classList.toggle("on", k === i));
+      el.querySelector("#obNext").textContent = i === slides.length - 1 ? "Începe" : "Continuă"; }, {passive: true});
+    el.querySelector("#obNext").onclick = () => { const i = idx(); if(i >= slides.length - 1) finish(); else s.scrollTo({left: (i + 1) * s.clientWidth, behavior: "smooth"}); };
+    el.querySelector("#obSkip").onclick = finish;
+  });
+}
+
 function viewLogin(){
   $("#tabs").classList.add("hidden"); $("#mini").classList.add("hidden");
+  showOnboarding(false);
   let mode = "in";
   const draw = () => {
     root.innerHTML = `<div class="login"><img class="logo" src="icon-192.png" alt=""><h1>Sona</h1>
@@ -1279,7 +1421,7 @@ function authErr(e){
 /* pull down at the top of a page to refresh */
 async function refreshAll(){
   if(audio.paused){ persist(true);
-    try{ const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }catch(e){}
+    try{ const ks = await caches.keys(); await Promise.all(ks.filter(k => k !== AUDIO_CACHE).map(k => caches.delete(k))); }catch(e){}   // keep downloaded books
     await sleep(250); location.reload(); return; }   // full refresh, picks up a new app version too
   try{ const [b, s] = await Promise.all([B.books(), B.state()]); BOOKS = b || {}; ST = s || {}; render(); toast("Actualizat"); }
   catch(e){ toast("Nu s-a putut actualiza. Verifică internetul."); }
@@ -1348,6 +1490,12 @@ async function onUser(u){
   let adm = false;
   try{ [BOOKS, ST, adm] = await Promise.all([B.books(), B.state(), B.isAdmin ? B.isAdmin().catch(() => false) : false]); }
   catch(e){
+    const offline = !navigator.onLine || /offline|network|unavailable|timeout/i.test(String(e && (e.code || e.message)));
+    const cache = store.get("ab_cache_" + u.uid, null);
+    if(offline && cache && cache.books){
+      BOOKS = cache.books; ST = cache.st || {}; USER.admin = !!(store.get("ab_last_user", {}) || {}).admin;
+      showApp(); toast("Fără internet: vezi cărțile descărcate"); return;
+    }
     if(B.claimAdminIfNone && !onUser.claimed){ onUser.claimed = true;
       try{ if(await B.claimAdminIfNone()) return onUser(u); }catch(err){} }
     // signed in, but not approved yet: leave a request for the admin
